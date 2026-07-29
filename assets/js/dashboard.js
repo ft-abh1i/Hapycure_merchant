@@ -295,7 +295,7 @@
     app.showModal("planModal");
   }
 
-  function saveDish(event) {
+  async function saveDish(event) {
     event.preventDefault();
     if (imageUploadInProgress) {
       app.toast("Wait for the image upload to finish");
@@ -316,7 +316,14 @@
     app.saveState(state);
     app.closeModal("dishModal");
     renderDashboard();
-    app.toast(index >= 0 ? "Dish updated" : "Dish added");
+    app.toast("Publishing dish to Hapycure…");
+    try {
+      await window.HapycureFirebase.syncDish(item, state);
+      app.toast(index >= 0 ? "Dish updated on Hapycure" : "Dish published on Hapycure");
+    } catch (error) {
+      console.error("Firebase dish sync failed:", error);
+      app.toast("Saved locally; customer sync pending");
+    }
   }
 
   function savePlan(event) {
@@ -355,7 +362,7 @@
     app.showModal("profileModal");
   }
 
-  function saveProfile(event) {
+  async function saveProfile(event) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
@@ -381,10 +388,17 @@
     app.saveState(state);
     app.closeModal("profileModal");
     renderDashboard();
-    app.toast("Business profile updated");
+    app.toast("Publishing profile changes…");
+    try {
+      await window.HapycureFirebase.syncBusiness(state);
+      app.toast("Business profile updated on Hapycure");
+    } catch (error) {
+      console.error("Firebase business sync failed:", error);
+      app.toast("Saved locally; customer sync pending");
+    }
   }
 
-  function catalogueAction(event) {
+  async function catalogueAction(event) {
     if (event.target.closest("[data-empty-add]")) {
       openAddForm();
       return;
@@ -400,13 +414,33 @@
       item.active = !item.active;
       app.saveState(state);
       renderDashboard();
-      app.toast(item.active ? "Listing activated" : "Listing paused");
+      if (state.service !== "food") {
+        app.toast(item.active ? "Listing activated" : "Listing paused");
+        return;
+      }
+      try {
+        await window.HapycureFirebase.syncDish(item, state);
+        app.toast(item.active ? "Listing activated on Hapycure" : "Listing paused on Hapycure");
+      } catch (error) {
+        console.error("Firebase availability sync failed:", error);
+        app.toast("Saved locally; customer sync pending");
+      }
     }
     if (button.dataset.action === "delete" && confirm(`Delete "${item.name}"?`)) {
       collection.splice(collection.findIndex(entry => entry.id === item.id), 1);
       app.saveState(state);
       renderDashboard();
-      app.toast("Listing deleted");
+      if (state.service !== "food") {
+        app.toast("Listing deleted");
+        return;
+      }
+      try {
+        await window.HapycureFirebase.deleteDish(item.id);
+        app.toast("Listing removed from Hapycure");
+      } catch (error) {
+        console.error("Firebase dish deletion failed:", error);
+        app.toast("Deleted locally; customer removal pending");
+      }
     }
   }
 
@@ -426,10 +460,21 @@
   $("#detectProfileLocation").addEventListener("click", () =>
     app.detectLocation(document.querySelector('[data-location-picker="profile"]'), "Update current location")
   );
-  $("#restartOnboarding").addEventListener("click", () => {
+  $("#restartOnboarding").addEventListener("click", async event => {
     if (!confirm("Changing service type will remove the current profile and all listings. Continue?")) return;
-    app.saveState(app.blankState());
-    location.replace("../onboarding/");
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "Removing current listings…";
+    try {
+      await window.HapycureFirebase.removePartnerData();
+      app.saveState(app.blankState());
+      location.replace("../onboarding/");
+    } catch (error) {
+      console.error("Firebase partner removal failed:", error);
+      button.disabled = false;
+      button.textContent = "Change service type";
+      app.toast("Could not remove live listings. Try again.");
+    }
   });
   $$("[data-close]").forEach(button =>
     button.addEventListener("click", () => app.closeModal(button.dataset.close))
@@ -444,4 +489,8 @@
   });
 
   renderDashboard();
+  window.HapycureFirebase.syncAllState(state).catch(error => {
+    console.error("Firebase startup sync failed:", error);
+    app.toast("Customer sync unavailable. Check Firebase setup.");
+  });
 })();
