@@ -127,11 +127,15 @@
         <label>Dish name<input name="name" required maxlength="60" placeholder="e.g. Special Veg Thali"></label>
         <div class="field-row">
           <label>Category
-            <input name="category" required maxlength="30" list="foodCategories" placeholder="Lunch">
-            <datalist id="foodCategories">
-              <option>Breakfast</option><option>Lunch</option><option>Dinner</option>
-              <option>Snacks</option><option>Drinks</option><option>Desserts</option>
-            </datalist>
+            <select name="category" required>
+              <option value="" selected disabled>Select category</option>
+              <option value="Breakfast">Breakfast</option>
+              <option value="Lunch">Lunch</option>
+              <option value="Dinner">Dinner</option>
+              <option value="Snacks">Snacks</option>
+              <option value="Drinks">Drinks</option>
+              <option value="Desserts">Desserts</option>
+            </select>
           </label>
           <label>Price (₹)<input name="price" required type="number" min="1" max="100000" placeholder="149"></label>
         </div>
