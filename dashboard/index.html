@@ -140,12 +140,34 @@
           <label>Price (₹)<input name="price" required type="number" min="1" max="100000" placeholder="149"></label>
         </div>
         <label>Description<textarea name="description" rows="3" maxlength="180" placeholder="What is included in this dish?"></textarea></label>
-        <label>Image URL <small>(optional)</small><input name="image" type="url" placeholder="https://example.com/food.jpg"></label>
+        <div class="image-upload-field">
+          <label>Dish image <small>(optional)</small></label>
+          <div class="image-upload-box">
+            <div class="dish-image-preview" id="dishImagePreview">
+              <div class="dish-image-placeholder" id="dishImagePlaceholder">
+                <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 11l2-2 4 4 2-2 4 4M8 8h.01"/></svg>
+                <span>No image selected</span>
+              </div>
+              <img id="dishImagePreviewImage" alt="Dish preview" hidden>
+            </div>
+            <input id="dishImageFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <input name="image" type="hidden">
+            <input name="imagePublicId" type="hidden">
+            <div class="image-upload-actions">
+              <button class="secondary" id="chooseDishImage" type="button">Choose image</button>
+              <button class="image-remove hidden" id="removeDishImage" type="button">Remove</button>
+            </div>
+            <div class="image-upload-progress hidden" id="imageUploadProgress">
+              <span id="imageUploadProgressBar"></span>
+            </div>
+            <p class="image-upload-status" id="imageUploadStatus" aria-live="polite"></p>
+          </div>
+        </div>
         <label class="switch-row">
           <span><b>Available now</b><small>Show this dish to customers</small></span>
           <input name="active" type="checkbox" checked>
         </label>
-        <button class="primary" type="submit">Save dish</button>
+        <button class="primary" id="dishSaveButton" type="submit">Save dish</button>
       </form>
     </div>
   </div>
@@ -199,6 +221,7 @@
 
   <div class="toast" id="toast" role="status"></div>
   <script src="../assets/js/shared.js"></script>
+  <script src="../assets/js/cloudinary.js"></script>
   <script src="../assets/js/dashboard.js"></script>
 </body>
 </html>
