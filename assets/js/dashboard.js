@@ -5,6 +5,8 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  let imageUploadInProgress = false;
+  let localPreviewUrl = null;
   let state = app.loadState();
 
   if (!state.onboarded || !state.business) {
@@ -157,12 +159,105 @@
     form.elements.active.checked = true;
     $("#dishFormTitle").textContent = item ? "Edit dish" : "Add a dish";
     if (item) {
-      ["id", "name", "category", "price", "description", "image"].forEach(key => {
+      ["id", "name", "category", "price", "description"].forEach(key => {
         form.elements[key].value = item[key] || "";
       });
       form.elements.active.checked = item.active;
     }
+    resetDishImageUploader(item);
     app.showModal("dishModal");
+  }
+
+  function setDishImagePreview(url) {
+    const image = $("#dishImagePreviewImage");
+    const placeholder = $("#dishImagePlaceholder");
+    image.hidden = !url;
+    placeholder.classList.toggle("hidden", Boolean(url));
+    if (url) image.src = url;
+    else image.removeAttribute("src");
+    $("#removeDishImage").classList.toggle("hidden", !url);
+  }
+
+  function setImageUploadStatus(message, type = "") {
+    const status = $("#imageUploadStatus");
+    status.textContent = message;
+    status.classList.toggle("error", type === "error");
+    status.classList.toggle("success", type === "success");
+  }
+
+  function resetDishImageUploader(item = null) {
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+      localPreviewUrl = null;
+    }
+    imageUploadInProgress = false;
+    $("#dishImageFile").value = "";
+    $("#dishForm").elements.image.value = item?.image || "";
+    $("#dishForm").elements.imagePublicId.value = item?.imagePublicId || "";
+    $("#dishSaveButton").disabled = false;
+    $("#chooseDishImage").disabled = false;
+    $("#imageUploadProgress").classList.add("hidden");
+    $("#imageUploadProgressBar").style.width = "0%";
+    setImageUploadStatus("");
+    setDishImagePreview(item?.image || "");
+  }
+
+  async function uploadSelectedDishImage(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      window.HapycureCloudinary.validateImage(file);
+    } catch (error) {
+      setImageUploadStatus(error.message, "error");
+      event.target.value = "";
+      return;
+    }
+
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    localPreviewUrl = URL.createObjectURL(file);
+    setDishImagePreview(localPreviewUrl);
+    imageUploadInProgress = true;
+    $("#dishSaveButton").disabled = true;
+    $("#chooseDishImage").disabled = true;
+    $("#imageUploadProgress").classList.remove("hidden");
+    setImageUploadStatus("Uploading image…");
+
+    try {
+      const uploaded = await window.HapycureCloudinary.uploadImage(file, progress => {
+        $("#imageUploadProgressBar").style.width = `${progress}%`;
+        setImageUploadStatus(`Uploading image… ${progress}%`);
+      });
+      $("#dishForm").elements.image.value = uploaded.secureUrl;
+      $("#dishForm").elements.imagePublicId.value = uploaded.publicId;
+      setDishImagePreview(uploaded.secureUrl);
+      $("#imageUploadProgressBar").style.width = "100%";
+      setImageUploadStatus("Image uploaded", "success");
+    } catch (error) {
+      $("#dishForm").elements.image.value = "";
+      $("#dishForm").elements.imagePublicId.value = "";
+      setDishImagePreview("");
+      $("#imageUploadProgress").classList.add("hidden");
+      setImageUploadStatus(error.message || "Image upload failed.", "error");
+    } finally {
+      imageUploadInProgress = false;
+      $("#dishSaveButton").disabled = false;
+      $("#chooseDishImage").disabled = false;
+    }
+  }
+
+  function removeDishImage() {
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+      localPreviewUrl = null;
+    }
+    $("#dishImageFile").value = "";
+    $("#dishForm").elements.image.value = "";
+    $("#dishForm").elements.imagePublicId.value = "";
+    $("#imageUploadProgress").classList.add("hidden");
+    $("#imageUploadProgressBar").style.width = "0%";
+    setImageUploadStatus("");
+    setDishImagePreview("");
   }
 
   function openPlanForm(item = null) {
@@ -182,6 +277,10 @@
 
   function saveDish(event) {
     event.preventDefault();
+    if (imageUploadInProgress) {
+      app.toast("Wait for the image upload to finish");
+      return;
+    }
     const form = event.currentTarget;
     const item = Object.fromEntries(new FormData(form).entries());
     item.id = item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -296,6 +395,9 @@
   $("#profileForm").addEventListener("submit", saveProfile);
   $("#dishForm").addEventListener("submit", saveDish);
   $("#planForm").addEventListener("submit", savePlan);
+  $("#chooseDishImage").addEventListener("click", () => $("#dishImageFile").click());
+  $("#dishImageFile").addEventListener("change", uploadSelectedDishImage);
+  $("#removeDishImage").addEventListener("click", removeDishImage);
   $("#detectProfileLocation").addEventListener("click", () =>
     app.detectLocation(document.querySelector('[data-location-picker="profile"]'), "Update current location")
   );
