@@ -659,6 +659,46 @@
       font-weight: 850;
     }
 
+    .dish-tags {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 5px;
+    }
+
+    .dish-tags .tag { margin-top: 0; }
+
+    .diet-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 7px;
+      border: 1px solid #b9dfc5;
+      border-radius: 999px;
+      color: var(--green);
+      font-size: 8px;
+      font-weight: 850;
+    }
+
+    .diet-badge::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .diet-badge.non-veg {
+      border-color: #efb9b4;
+      color: #bd332b;
+    }
+
+    .diet-badge.unspecified {
+      border-color: #d8cfcb;
+      color: #8b7e79;
+    }
+
     .item-copy > p {
       display: -webkit-box;
       overflow: hidden;
