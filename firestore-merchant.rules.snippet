@@ -21,7 +21,12 @@ match /restaurants/{restaurantId} {
 match /dishes/{dishId} {
   allow read: if true;
 
-  allow create, update: if request.auth != null
+  allow create: if request.auth != null
+    && request.resource.data.ownerId == request.auth.uid
+    && request.resource.data.restaurantId == request.auth.uid;
+
+  allow update: if request.auth != null
+    && resource.data.ownerId == request.auth.uid
     && request.resource.data.ownerId == request.auth.uid
     && request.resource.data.restaurantId == request.auth.uid;
 
@@ -32,7 +37,13 @@ match /dishes/{dishId} {
 match /messPlans/{planId} {
   allow read: if true;
 
-  allow create, update: if request.auth != null
+  allow create: if request.auth != null
+    && request.resource.data.ownerId == request.auth.uid
+    && request.resource.data.restaurantId == request.auth.uid
+    && request.resource.data.source == "hapycure-merchant";
+
+  allow update: if request.auth != null
+    && resource.data.ownerId == request.auth.uid
     && request.resource.data.ownerId == request.auth.uid
     && request.resource.data.restaurantId == request.auth.uid
     && request.resource.data.source == "hapycure-merchant";
