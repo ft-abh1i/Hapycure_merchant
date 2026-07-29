@@ -1,1 +1,15 @@
-hi 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#8f241f">
+  <title>Hapycure Partner</title>
+</head>
+<body>
+  <script>
+    const state = JSON.parse(localStorage.getItem("hapycurePartnerV2") || "{}");
+    location.replace(state.onboarded ? "./dashboard/" : "./onboarding/");
+  </script>
+</body>
+</html>

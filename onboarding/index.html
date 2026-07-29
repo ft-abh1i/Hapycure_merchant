@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#8f241f">
+  <title>Join Hapycure Partner</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <section class="onboarding" id="onboarding">
+      <aside class="onboarding-aside">
+        <div class="brand">
+          <div class="brand-mark">H</div>
+          <div>Hapycure<small>PARTNER</small></div>
+        </div>
+
+        <div class="aside-copy">
+          <h1>Grow your food business with Hapycure.</h1>
+          <p>Create your storefront, publish your menu and manage what customers can order—all from one simple partner dashboard.</p>
+          <div class="benefits">
+            <span><i>✓</i> Simple business onboarding</span>
+            <span><i>✓</i> Flexible menu management</span>
+            <span><i>✓</i> Built for kitchens and mess providers</span>
+          </div>
+        </div>
+
+        <span style="font-size:9px;color:rgba(255,255,255,.55)">HAPYCURE PARTNER PORTAL</span>
+      </aside>
+
+      <main class="onboarding-main">
+        <div class="step" id="serviceStep">
+          <div class="progress"><span class="active"></span><span></span></div>
+          <span class="eyebrow">STEP 1 OF 2</span>
+          <h2>What do you want to list?</h2>
+          <p class="step-lead">Choose one service. Your management dashboard will be prepared for that business type.</p>
+
+          <div class="service-grid">
+            <button class="service-card" type="button" data-service="food">
+              <span class="check">✓</span>
+              <span class="service-icon">
+                <svg viewBox="0 0 24 24"><path d="M4 11h16M6 11a6 6 0 0 1 12 0M12 5V3M3 16h18M5 16v3h14v-3"/></svg>
+              </span>
+              <h3>Restaurant or Home Kitchen</h3>
+              <p>Sell individual food items and dishes from your restaurant, cloud kitchen or home kitchen.</p>
+              <ul><li>Add dishes and prices</li><li>Organise food by category</li><li>Control item availability</li></ul>
+            </button>
+
+            <button class="service-card" type="button" data-service="mess">
+              <span class="check">✓</span>
+              <span class="service-icon">
+                <svg viewBox="0 0 24 24"><path d="M5 3v3M12 3v3M19 3v3M4 8h16v12H4zM8 12h3M14 12h3M8 16h3M14 16h3"/></svg>
+              </span>
+              <h3>Mess Service</h3>
+              <p>Offer weekly or monthly meal plans and show customers what is served each day.</p>
+              <ul><li>Create weekly or monthly plans</li><li>Add a day-wise menu</li><li>Set meals and plan price</li></ul>
+            </button>
+          </div>
+
+          <div class="onboarding-actions">
+            <span></span>
+            <button class="primary" id="continueSetup" type="button" disabled>Continue</button>
+          </div>
+        </div>
+
+        <div class="step hidden" id="detailsStep">
+          <div class="progress"><span class="active"></span><span class="active"></span></div>
+          <span class="eyebrow">STEP 2 OF 2</span>
+          <h2 id="detailsTitle">Tell us about your business</h2>
+          <p class="step-lead">These details will appear on your Hapycure listing.</p>
+
+          <form class="setup-form" id="setupForm">
+            <div id="foodSubtypeField">
+              <label style="margin-bottom:7px">Business type</label>
+              <div class="subtype-options">
+                <label class="radio-card"><input type="radio" name="subtype" value="Restaurant" checked> Restaurant / Cloud Kitchen</label>
+                <label class="radio-card"><input type="radio" name="subtype" value="Home Kitchen"> Home Kitchen</label>
+              </div>
+            </div>
+
+            <label>Business name
+              <input name="name" required maxlength="60" placeholder="e.g. Aunty's Kitchen">
+            </label>
+
+            <div class="field-row">
+              <label>Food preference
+                <select name="foodType" required>
+                  <option value="Pure Veg">Pure Veg</option>
+                  <option value="Veg & Non-veg">Veg & Non-veg</option>
+                  <option value="Non-veg">Non-veg</option>
+                </select>
+              </label>
+              <label>Phone number
+                <input name="phone" required inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit number">
+              </label>
+            </div>
+
+            <div class="location-picker" data-location-picker="setup">
+              <label>Business location</label>
+              <button class="location-button" id="detectSetupLocation" type="button">
+                <svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>Use current location</span>
+              </button>
+              <p class="location-status" data-location-status aria-live="polite"></p>
+              <div class="location-result hidden" data-location-result><p data-location-address></p></div>
+              <input name="address" type="hidden">
+              <input name="latitude" type="hidden">
+              <input name="longitude" type="hidden">
+              <input name="accuracy" type="hidden">
+            </div>
+
+            <div class="field-row">
+              <label>Opening time<input name="openTime" type="time" required value="09:00"></label>
+              <label>Closing time<input name="closeTime" type="time" required value="22:00"></label>
+            </div>
+
+            <div class="onboarding-actions">
+              <button class="secondary" id="backToServices" type="button">Back</button>
+              <button class="primary" type="submit">Create partner profile</button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="../assets/js/shared.js"></script>
+  <script src="../assets/js/onboarding.js"></script>
+</body>
+</html>

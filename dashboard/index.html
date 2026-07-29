@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#8f241f">
+  <title>Hapycure Partner Dashboard</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <section class="dashboard" id="dashboard">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">H</div>
+          <div>Hapycure<small>PARTNER DASHBOARD</small></div>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill" id="businessStatus">Accepting orders</span>
+          <button class="icon-button" id="openProfile" type="button" aria-label="Edit business profile">
+            <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="dashboard-main">
+        <section class="hero">
+          <div>
+            <span class="eyebrow" id="heroLabel">FOOD PARTNER</span>
+            <h1 id="heroTitle">Manage your dishes</h1>
+            <p id="heroDescription">Add dishes, update prices and control what customers can order today.</p>
+          </div>
+          <button class="primary" id="heroAdd" type="button">+ Add dish</button>
+        </section>
+
+        <section class="stats" aria-label="Business overview">
+          <article class="stat"><span id="totalLabel">Total dishes</span><strong id="totalCount">0</strong></article>
+          <article class="stat"><span>Currently active</span><strong id="activeCount">0</strong></article>
+          <article class="stat"><span>Starting from</span><strong id="startingPrice">₹0</strong></article>
+        </section>
+
+        <section class="content-card">
+          <div class="business-row">
+            <div class="business-icon">
+              <svg viewBox="0 0 24 24"><path d="M3 10h18M5 10v10h14V10M4 4h16l1 6H3l1-6Zm5 16v-5h6v5"/></svg>
+            </div>
+            <div class="business-copy">
+              <span class="eyebrow" id="businessTypeLabel">RESTAURANT</span>
+              <h3 id="businessName"></h3>
+              <p id="businessMeta"></p>
+            </div>
+            <button class="secondary" id="editBusiness" type="button">Edit profile</button>
+          </div>
+        </section>
+
+        <section class="manage-section">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow" id="catalogueEyebrow">YOUR CATALOGUE</span>
+              <h2 id="catalogueTitle">Food items</h2>
+            </div>
+            <button class="primary" id="sectionAdd" type="button">+ Add dish</button>
+          </div>
+
+          <div class="tools">
+            <label class="search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+              <input id="catalogueSearch" type="search" placeholder="Search dishes">
+            </label>
+            <select id="catalogueFilter" aria-label="Filter catalogue"><option value="all">All</option></select>
+          </div>
+          <div class="catalogue" id="catalogue"></div>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <div class="modal" id="profileModal" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><span class="eyebrow">BUSINESS PROFILE</span><h2>Edit your details</h2></div>
+        <button class="close" data-close="profileModal" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="profileForm">
+        <label>Business name<input name="name" required maxlength="60"></label>
+        <div class="field-row">
+          <label>Food preference
+            <select name="foodType"><option>Pure Veg</option><option>Veg & Non-veg</option><option>Non-veg</option></select>
+          </label>
+          <label>Phone number<input name="phone" required inputmode="numeric" pattern="[0-9]{10}" maxlength="10"></label>
+        </div>
+        <div class="location-picker" data-location-picker="profile">
+          <label>Business location</label>
+          <button class="location-button" id="detectProfileLocation" type="button">
+            <svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Update current location</span>
+          </button>
+          <p class="location-status" data-location-status aria-live="polite"></p>
+          <div class="location-result hidden" data-location-result><p data-location-address></p></div>
+          <input name="address" type="hidden">
+          <input name="latitude" type="hidden">
+          <input name="longitude" type="hidden">
+          <input name="accuracy" type="hidden">
+        </div>
+        <div class="field-row">
+          <label>Opening time<input name="openTime" type="time" required></label>
+          <label>Closing time<input name="closeTime" type="time" required></label>
+        </div>
+        <label class="switch-row">
+          <span><b>Accepting orders</b><small>Customers can see and order active listings</small></span>
+          <input name="open" type="checkbox">
+        </label>
+        <button class="primary" type="submit">Save changes</button>
+        <button class="secondary" id="restartOnboarding" type="button">Change service type</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="dishModal" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><span class="eyebrow">FOOD ITEM</span><h2 id="dishFormTitle">Add a dish</h2></div>
+        <button class="close" data-close="dishModal" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="dishForm">
+        <input name="id" type="hidden">
+        <label>Dish name<input name="name" required maxlength="60" placeholder="e.g. Special Veg Thali"></label>
+        <div class="field-row">
+          <label>Category
+            <input name="category" required maxlength="30" list="foodCategories" placeholder="Lunch">
+            <datalist id="foodCategories">
+              <option>Breakfast</option><option>Lunch</option><option>Dinner</option>
+              <option>Snacks</option><option>Drinks</option><option>Desserts</option>
+            </datalist>
+          </label>
+          <label>Price (₹)<input name="price" required type="number" min="1" max="100000" placeholder="149"></label>
+        </div>
+        <label>Description<textarea name="description" rows="3" maxlength="180" placeholder="What is included in this dish?"></textarea></label>
+        <label>Image URL <small>(optional)</small><input name="image" type="url" placeholder="https://example.com/food.jpg"></label>
+        <label class="switch-row">
+          <span><b>Available now</b><small>Show this dish to customers</small></span>
+          <input name="active" type="checkbox" checked>
+        </label>
+        <button class="primary" type="submit">Save dish</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="planModal" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><span class="eyebrow">MESS SUBSCRIPTION</span><h2 id="planFormTitle">Add a mess plan</h2></div>
+        <button class="close" data-close="planModal" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="planForm">
+        <input name="id" type="hidden">
+        <label>Plan name<input name="name" required maxlength="60" placeholder="e.g. Complete Home Meal Plan"></label>
+        <div class="field-row">
+          <label>Plan duration
+            <select name="cycle" required><option value="Weekly">Weekly</option><option value="Monthly">Monthly</option></select>
+          </label>
+          <label>Plan price (₹)<input name="price" required type="number" min="1" max="100000" placeholder="2499"></label>
+        </div>
+        <div class="field-row">
+          <label>Meals included
+            <select name="meals" required>
+              <option>Lunch</option><option>Dinner</option><option>Lunch & Dinner</option>
+              <option>Breakfast, Lunch & Dinner</option>
+            </select>
+          </label>
+          <label>Delivery days
+            <select name="deliveryDays" required><option>7 days a week</option><option>6 days a week</option><option>Weekdays only</option></select>
+          </label>
+        </div>
+        <div>
+          <label style="margin-bottom:9px">Day-wise menu</label>
+          <div class="days-menu">
+            <label>Monday<input name="Monday" required placeholder="Dal, rice, sabzi, roti"></label>
+            <label>Tuesday<input name="Tuesday" required placeholder="Rajma, rice, roti"></label>
+            <label>Wednesday<input name="Wednesday" required placeholder="Your Wednesday menu"></label>
+            <label>Thursday<input name="Thursday" required placeholder="Your Thursday menu"></label>
+            <label>Friday<input name="Friday" required placeholder="Your Friday menu"></label>
+            <label>Saturday<input name="Saturday" required placeholder="Your Saturday menu"></label>
+            <label>Sunday<input name="Sunday" required placeholder="Your Sunday menu"></label>
+          </div>
+        </div>
+        <label class="switch-row">
+          <span><b>Plan active</b><small>Customers can subscribe to this plan</small></span>
+          <input name="active" type="checkbox" checked>
+        </label>
+        <button class="primary" type="submit">Save mess plan</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="../assets/js/shared.js"></script>
+  <script src="../assets/js/dashboard.js"></script>
+</body>
+</html>
