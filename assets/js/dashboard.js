@@ -18,6 +18,7 @@
     const prices = items.map(item => Number(item.price)).filter(Number.isFinite);
     const business = state.business;
 
+    $(".hero").classList.toggle("hidden", !isMess);
     $("#heroLabel").textContent = isMess ? "MESS PARTNER" : "FOOD PARTNER";
     $("#heroTitle").textContent = isMess ? "Manage your meal plans" : "Manage your dishes";
     $("#heroDescription").textContent = isMess
