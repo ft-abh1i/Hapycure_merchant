@@ -65,7 +65,7 @@
     const visible = items.filter(item => {
       const haystack = isMess
         ? `${item.name} ${item.cycle} ${item.meals} ${Object.values(item.menu || {}).join(" ")}`
-        : `${item.name} ${item.category} ${item.description}`;
+        : `${item.name} ${item.category} ${item.dietType || ""} ${item.description}`;
       const group = isMess ? item.cycle : item.category;
       return (!query || haystack.toLowerCase().includes(query)) &&
         (filter === "all" || group === filter);
@@ -110,6 +110,8 @@
   }
 
   function dishCard(item) {
+    const dietType = item.dietType || "Not specified";
+    const dietClass = dietType === "Non-veg" ? "non-veg" : dietType === "Veg" ? "" : "unspecified";
     return `
       <article class="item-card dish-card">
         <div class="item-image">${item.image
@@ -120,7 +122,10 @@
             <h3>${app.escapeHTML(item.name)}</h3>
             <span class="price">${app.formatPrice(item.price)}</span>
           </div>
-          <span class="tag">${app.escapeHTML(item.category)}</span>
+          <div class="dish-tags">
+            <span class="tag">${app.escapeHTML(item.category)}</span>
+            <span class="diet-badge ${dietClass}">${app.escapeHTML(dietType)}</span>
+          </div>
           <p>${app.escapeHTML(item.description || "Freshly prepared by your kitchen.")}</p>
           ${itemActions(item)}
         </div>
@@ -159,7 +164,7 @@
     form.elements.active.checked = true;
     $("#dishFormTitle").textContent = item ? "Edit dish" : "Add a dish";
     if (item) {
-      ["id", "name", "category", "price", "description"].forEach(key => {
+      ["id", "name", "category", "dietType", "price", "description"].forEach(key => {
         form.elements[key].value = item[key] || "";
       });
       form.elements.active.checked = item.active;
@@ -282,6 +287,11 @@
       return;
     }
     const form = event.currentTarget;
+    if (!form.elements.image.value) {
+      setImageUploadStatus("Dish image is required.", "error");
+      app.toast("Upload a dish image before saving");
+      return;
+    }
     const item = Object.fromEntries(new FormData(form).entries());
     item.id = item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     item.active = form.elements.active.checked;
