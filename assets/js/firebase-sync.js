@@ -62,6 +62,10 @@
     return `${userId}_${String(dishId).replaceAll("/", "_")}`;
   }
 
+  function planDocumentId(userId, planId) {
+    return `${userId}_${String(planId).replaceAll("/", "_")}`;
+  }
+
   function businessPayload(state, userId, firebaseSdk) {
     const business = state.business || {};
     return {
@@ -101,6 +105,28 @@
     };
   }
 
+  function planPayload(plan, userId, firebaseSdk) {
+    const menu = plan?.menu && typeof plan.menu === "object" && !Array.isArray(plan.menu)
+      ? Object.fromEntries(Object.entries(plan.menu).map(([day, item]) => [
+        String(day || "").trim(),
+        String(item || "").trim()
+      ]).filter(([day]) => day))
+      : {};
+    return {
+      ownerId: userId,
+      restaurantId: userId,
+      name: String(plan?.name || "").trim(),
+      cycle: String(plan?.cycle || ""),
+      price: Number(plan?.price) || 0,
+      meals: String(plan?.meals || ""),
+      deliveryDays: String(plan?.deliveryDays || ""),
+      menu,
+      active: plan?.active !== false,
+      source: "hapycure-merchant",
+      updatedAt: timestamp(firebaseSdk)
+    };
+  }
+
   async function syncBusiness(state) {
     if (!state?.business) return;
     const context = await ready();
@@ -116,6 +142,14 @@
     await context.db.collection("dishes")
       .doc(dishDocumentId(context.user.uid, dish.id))
       .set(dishPayload(dish, state, context.user.uid, context.firebase), { merge: true });
+  }
+
+  async function syncPlan(plan, state) {
+    if (!plan || state?.service !== "mess" || !state?.business) return;
+    const context = await ready();
+    await context.db.collection("messPlans")
+      .doc(planDocumentId(context.user.uid, plan.id))
+      .set(planPayload(plan, context.user.uid, context.firebase), { merge: true });
   }
 
   function readPendingDeletes() {
@@ -144,6 +178,13 @@
       queuePendingDelete(dishId);
       throw error;
     }
+  }
+
+  async function deletePlan(planId) {
+    const context = await ready();
+    await context.db.collection("messPlans")
+      .doc(planDocumentId(context.user.uid, planId))
+      .delete();
   }
 
   async function flushPendingDeletes(context) {
@@ -186,15 +227,30 @@
     const localIds = new Set(localDishes.map(dish => dishDocumentId(userId, dish.id)));
     const staleDocuments = remoteSnapshot.docs.filter(document => !localIds.has(document.id));
     await deleteDocuments(context, staleDocuments);
+
+    const localPlans = state.service === "mess" ? (state.plans || []) : [];
+    await Promise.all(localPlans.map(plan =>
+      context.db.collection("messPlans")
+        .doc(planDocumentId(userId, plan.id))
+        .set(planPayload(plan, userId, context.firebase), { merge: true })
+    ));
+
+    const remotePlanSnapshot = await context.db.collection("messPlans")
+      .where("restaurantId", "==", userId)
+      .get();
+    const localPlanIds = new Set(localPlans.map(plan => planDocumentId(userId, plan.id)));
+    const stalePlanDocuments = remotePlanSnapshot.docs.filter(document => !localPlanIds.has(document.id));
+    await deleteDocuments(context, stalePlanDocuments);
     await flushPendingDeletes(context);
   }
 
   async function removePartnerData() {
     const context = await ready();
-    const snapshot = await context.db.collection("dishes")
-      .where("restaurantId", "==", context.user.uid)
-      .get();
-    await deleteDocuments(context, snapshot.docs);
+    const [dishSnapshot, planSnapshot] = await Promise.all([
+      context.db.collection("dishes").where("restaurantId", "==", context.user.uid).get(),
+      context.db.collection("messPlans").where("restaurantId", "==", context.user.uid).get()
+    ]);
+    await deleteDocuments(context, [...dishSnapshot.docs, ...planSnapshot.docs]);
     await context.db.collection("restaurants").doc(context.user.uid).delete();
     localStorage.removeItem(PENDING_DELETE_KEY);
   }
@@ -203,7 +259,9 @@
     ready,
     syncBusiness,
     syncDish,
+    syncPlan,
     deleteDish,
+    deletePlan,
     syncAllState,
     removePartnerData
   };

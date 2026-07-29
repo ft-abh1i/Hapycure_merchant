@@ -326,7 +326,7 @@
     }
   }
 
-  function savePlan(event) {
+  async function savePlan(event) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
@@ -346,7 +346,14 @@
     app.saveState(state);
     app.closeModal("planModal");
     renderDashboard();
-    app.toast(index >= 0 ? "Mess plan updated" : "Mess plan created");
+    app.toast("Publishing mess plan to Hapycure…");
+    try {
+      await window.HapycureFirebase.syncPlan(item, state);
+      app.toast(index >= 0 ? "Mess plan updated on Hapycure" : "Mess plan published on Hapycure");
+    } catch (error) {
+      console.error("Firebase mess-plan sync failed:", error);
+      app.toast("Saved locally; customer sync pending");
+    }
   }
 
   function openProfileForm() {
@@ -414,12 +421,9 @@
       item.active = !item.active;
       app.saveState(state);
       renderDashboard();
-      if (state.service !== "food") {
-        app.toast(item.active ? "Listing activated" : "Listing paused");
-        return;
-      }
       try {
-        await window.HapycureFirebase.syncDish(item, state);
+        if (state.service === "food") await window.HapycureFirebase.syncDish(item, state);
+        else await window.HapycureFirebase.syncPlan(item, state);
         app.toast(item.active ? "Listing activated on Hapycure" : "Listing paused on Hapycure");
       } catch (error) {
         console.error("Firebase availability sync failed:", error);
@@ -430,15 +434,12 @@
       collection.splice(collection.findIndex(entry => entry.id === item.id), 1);
       app.saveState(state);
       renderDashboard();
-      if (state.service !== "food") {
-        app.toast("Listing deleted");
-        return;
-      }
       try {
-        await window.HapycureFirebase.deleteDish(item.id);
+        if (state.service === "food") await window.HapycureFirebase.deleteDish(item.id);
+        else await window.HapycureFirebase.deletePlan(item.id);
         app.toast("Listing removed from Hapycure");
       } catch (error) {
-        console.error("Firebase dish deletion failed:", error);
+        console.error("Firebase listing deletion failed:", error);
         app.toast("Deleted locally; customer removal pending");
       }
     }

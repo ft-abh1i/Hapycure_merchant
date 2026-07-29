@@ -28,3 +28,15 @@ match /dishes/{dishId} {
   allow delete: if request.auth != null
     && resource.data.ownerId == request.auth.uid;
 }
+
+match /messPlans/{planId} {
+  allow read: if true;
+
+  allow create, update: if request.auth != null
+    && request.resource.data.ownerId == request.auth.uid
+    && request.resource.data.restaurantId == request.auth.uid
+    && request.resource.data.source == "hapycure-merchant";
+
+  allow delete: if request.auth != null
+    && resource.data.ownerId == request.auth.uid;
+}
