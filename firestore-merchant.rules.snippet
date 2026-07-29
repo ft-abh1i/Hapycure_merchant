@@ -1,0 +1,30 @@
+// Add these match blocks inside your existing:
+// service cloud.firestore {
+//   match /databases/{database}/documents {
+//     ...
+//   }
+// }
+//
+// Keep the existing users/supportTickets rules used by the Hapycure customer app.
+
+match /restaurants/{restaurantId} {
+  allow read: if true;
+
+  allow create, update: if request.auth != null
+    && request.auth.uid == restaurantId
+    && request.resource.data.ownerId == request.auth.uid;
+
+  allow delete: if request.auth != null
+    && request.auth.uid == restaurantId;
+}
+
+match /dishes/{dishId} {
+  allow read: if true;
+
+  allow create, update: if request.auth != null
+    && request.resource.data.ownerId == request.auth.uid
+    && request.resource.data.restaurantId == request.auth.uid;
+
+  allow delete: if request.auth != null
+    && resource.data.ownerId == request.auth.uid;
+}
