@@ -190,6 +190,10 @@
     status.classList.toggle("success", type === "success");
   }
 
+  function formatFileSize(bytes) {
+    return `${Math.max(1, Math.round(Number(bytes || 0) / 1024))} KB`;
+  }
+
   function resetDishImageUploader(item = null) {
     if (localPreviewUrl) {
       URL.revokeObjectURL(localPreviewUrl);
@@ -229,15 +233,26 @@
     setImageUploadStatus("Uploading image…");
 
     try {
-      const uploaded = await window.HapycureCloudinary.uploadImage(file, progress => {
-        $("#imageUploadProgressBar").style.width = `${progress}%`;
-        setImageUploadStatus(`Uploading image… ${progress}%`);
-      });
+      const uploaded = await window.HapycureCloudinary.uploadImage(
+        file,
+        progress => {
+          $("#imageUploadProgressBar").style.width = `${progress}%`;
+          setImageUploadStatus(`Uploading WebP… ${progress}%`);
+        },
+        stage => {
+          if (stage.stage === "optimizing") {
+            setImageUploadStatus("Optimizing image to WebP…");
+          }
+          if (stage.stage === "uploading") {
+            setImageUploadStatus(`Optimized to ${formatFileSize(stage.optimizedBytes)} WebP • Uploading…`);
+          }
+        }
+      );
       $("#dishForm").elements.image.value = uploaded.secureUrl;
       $("#dishForm").elements.imagePublicId.value = uploaded.publicId;
       setDishImagePreview(uploaded.secureUrl);
       $("#imageUploadProgressBar").style.width = "100%";
-      setImageUploadStatus("Image uploaded", "success");
+      setImageUploadStatus(`Image uploaded • ${formatFileSize(uploaded.optimizedBytes)} WebP`, "success");
     } catch (error) {
       $("#dishForm").elements.image.value = "";
       $("#dishForm").elements.imagePublicId.value = "";
