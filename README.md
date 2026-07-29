@@ -28,4 +28,4 @@ A mobile-first partner portal for restaurants, home kitchens, and mess providers
 
 The app currently stores partner data in browser `localStorage`. Business location is captured with the browser Geolocation API and converted into an address through reverse geocoding.
 
-Dish images are uploaded directly from the browser to Cloudinary using the unsigned `hapycure_dishes` upload preset. The Cloudinary API secret is never included in frontend code.
+Dish images are converted to WebP and intelligently compressed in the browser before being uploaded to Cloudinary. The optimizer targets 30–50 KB while retaining the highest quality it can under the 50 KB ceiling. Uploads use the unsigned `hapycure_dishes` preset, and the Cloudinary API secret is never included in frontend code.
