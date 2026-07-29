@@ -407,10 +407,11 @@
       line-height: 1.45;
     }
 
+    .location-status:empty { display: none; }
     .location-status.error { color: #b12a23; }
 
     .location-result {
-      margin-top: 10px;
+      margin-top: 6px;
       padding: 12px;
       border: 1px solid #cfe5d7;
       border-radius: 14px;
