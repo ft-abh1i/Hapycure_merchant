@@ -35,9 +35,10 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function finishOnboarding(event) {
+  async function finishOnboarding(event) {
     event.preventDefault();
     const form = event.currentTarget;
+    const submitButton = form.querySelector('[type="submit"]');
     const data = Object.fromEntries(new FormData(form).entries());
     const picker = document.querySelector('[data-location-picker="setup"]');
 
@@ -47,7 +48,7 @@
       return;
     }
 
-    app.saveState({
+    const state = {
       onboarded: true,
       service: selectedService,
       business: {
@@ -65,9 +66,21 @@
       },
       dishes: [],
       plans: []
-    });
+    };
 
-    location.replace("../dashboard/");
+    app.saveState(state);
+    submitButton.disabled = true;
+    submitButton.textContent = "Publishing profile…";
+
+    try {
+      await window.HapycureFirebase.syncAllState(state);
+      app.toast("Partner profile published");
+    } catch (error) {
+      console.error("Firebase profile sync failed:", error);
+      app.toast("Profile saved. Cloud sync will retry.");
+    }
+
+    setTimeout(() => location.replace("../dashboard/"), 350);
   }
 
   $$(".service-card").forEach(card =>
