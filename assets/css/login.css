@@ -48,6 +48,46 @@ button { border: 0; background: none; cursor: pointer; touch-action: manipulatio
   padding-top: clamp(205px, 23dvh, 270px);
 }
 
+.login-hero-copy {
+  position: absolute;
+  top: max(34px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 2;
+  width: min(100% - 40px, 390px);
+  color: #fff;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.login-hero-copy span {
+  display: inline-flex;
+  padding: 6px 11px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.login-hero-copy h1 {
+  margin-top: 12px;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -.04em;
+}
+
+.login-hero-copy p {
+  max-width: 310px;
+  margin: 7px auto 0;
+  color: rgba(255,255,255,.78);
+  font-size: .78rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
 .login-card {
   position: relative;
   width: 100%;
@@ -153,6 +193,9 @@ button { border: 0; background: none; cursor: pointer; touch-action: manipulatio
 
 @media (max-height: 740px) {
   .login-wrap { padding-top: 180px; }
+  .login-hero-copy { top: max(22px, env(safe-area-inset-top)); }
+  .login-hero-copy h1 { margin-top: 9px; font-size: 1.42rem; }
+  .login-hero-copy p { margin-top: 4px; font-size: .7rem; }
   .login-card { min-height: calc(100dvh - 180px); padding-top: 1.55rem; }
   .login-title { font-size: 1.65rem; }
   .login-subtitle { margin-top: .3rem; }
