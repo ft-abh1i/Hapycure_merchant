@@ -10,7 +10,8 @@
     appId: "1:904909524137:web:e20913ddbd9aa3d3856db8"
   };
 
-  const PENDING_DELETE_KEY = "hapycurePendingDishDeletes";
+  const PENDING_DELETE_KEY_PREFIX = "hapycurePendingDishDeletes_";
+  const USER_KEY = "hapycurePartnerUser";
   let readyPromise = null;
 
   function requireFirebase() {
@@ -19,6 +20,38 @@
     }
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     return firebase;
+  }
+
+  function storedUserId() {
+    try {
+      return String(JSON.parse(localStorage.getItem(USER_KEY) || "{}")?.uid || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function pendingDeleteKey(userId = storedUserId()) {
+    return `${PENDING_DELETE_KEY_PREFIX}${String(userId || "").trim()}`;
+  }
+
+  function waitForAuthenticatedUser(auth) {
+    if (auth.currentUser && !auth.currentUser.isAnonymous) return Promise.resolve(auth.currentUser);
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        unsubscribe();
+        reject(new Error("Partner sign-in session expired. Please log in again."));
+      }, 8000);
+      const unsubscribe = auth.onAuthStateChanged(user => {
+        if (!user || user.isAnonymous) return;
+        clearTimeout(timeout);
+        unsubscribe();
+        resolve(user);
+      }, error => {
+        clearTimeout(timeout);
+        unsubscribe();
+        reject(error);
+      });
+    });
   }
 
   function ready() {
@@ -34,12 +67,11 @@
         // Persistence may already be locked by another Firebase page on this origin.
       }
 
-      let user = auth.currentUser;
-      if (!user) {
-        const credential = await auth.signInAnonymously();
-        user = credential.user;
+      const user = await waitForAuthenticatedUser(auth);
+      const expectedUserId = storedUserId();
+      if (!expectedUserId || user.uid !== expectedUserId) {
+        throw new Error("Partner account mismatch. Please log in again.");
       }
-      if (!user) throw new Error("Partner authentication failed.");
 
       return {
         db: firebaseSdk.firestore(),
@@ -115,6 +147,17 @@
         String(item || "").trim()
       ]).filter(([day]) => day))
       : {};
+    const mealMenus = plan?.mealMenus && typeof plan.mealMenus === "object" && !Array.isArray(plan.mealMenus)
+      ? Object.fromEntries(Object.entries(plan.mealMenus).map(([meal, days]) => [
+        String(meal || "").trim(),
+        days && typeof days === "object" && !Array.isArray(days)
+          ? Object.fromEntries(Object.entries(days).map(([day, item]) => [
+            String(day || "").trim(),
+            String(item || "").trim()
+          ]).filter(([day]) => day))
+          : {}
+      ]).filter(([meal]) => meal))
+      : {};
     return {
       ownerId: userId,
       restaurantId: userId,
@@ -124,6 +167,7 @@
       meals: String(plan?.meals || ""),
       deliveryDays: String(plan?.deliveryDays || ""),
       menu,
+      mealMenus,
       active: plan?.active !== false,
       source: "hapycure-merchant",
       updatedAt: timestamp(firebaseSdk)
@@ -155,18 +199,18 @@
       .set(planPayload(plan, context.user.uid, context.firebase), { merge: true });
   }
 
-  function readPendingDeletes() {
+  function readPendingDeletes(userId = storedUserId()) {
     try {
-      const value = JSON.parse(localStorage.getItem(PENDING_DELETE_KEY) || "[]");
+      const value = JSON.parse(localStorage.getItem(pendingDeleteKey(userId)) || "[]");
       return Array.isArray(value) ? value : [];
     } catch (_) {
       return [];
     }
   }
 
-  function queuePendingDelete(dishId) {
-    const ids = [...new Set([...readPendingDeletes(), String(dishId)])];
-    localStorage.setItem(PENDING_DELETE_KEY, JSON.stringify(ids));
+  function queuePendingDelete(dishId, userId = storedUserId()) {
+    const ids = [...new Set([...readPendingDeletes(userId), String(dishId)])];
+    localStorage.setItem(pendingDeleteKey(userId), JSON.stringify(ids));
   }
 
   async function deleteDish(dishId) {
@@ -175,8 +219,8 @@
       await context.db.collection("dishes")
         .doc(dishDocumentId(context.user.uid, dishId))
         .delete();
-      const remaining = readPendingDeletes().filter(id => id !== String(dishId));
-      localStorage.setItem(PENDING_DELETE_KEY, JSON.stringify(remaining));
+      const remaining = readPendingDeletes(context.user.uid).filter(id => id !== String(dishId));
+      localStorage.setItem(pendingDeleteKey(context.user.uid), JSON.stringify(remaining));
     } catch (error) {
       queuePendingDelete(dishId);
       throw error;
@@ -191,12 +235,66 @@
   }
 
   async function flushPendingDeletes(context) {
-    const ids = readPendingDeletes();
+    const ids = readPendingDeletes(context.user.uid);
     if (!ids.length) return;
     await Promise.all(ids.map(id =>
       context.db.collection("dishes").doc(dishDocumentId(context.user.uid, id)).delete()
     ));
-    localStorage.removeItem(PENDING_DELETE_KEY);
+    localStorage.removeItem(pendingDeleteKey(context.user.uid));
+  }
+
+  function localDocumentId(documentId, userId) {
+    const prefix = `${userId}_`;
+    return documentId.startsWith(prefix) ? documentId.slice(prefix.length) : documentId;
+  }
+
+  function localBusiness(data) {
+    return {
+      name: String(data.name || ""),
+      subtype: String(data.subtype || ""),
+      foodType: String(data.foodType || ""),
+      phone: String(data.phone || ""),
+      address: String(data.address || ""),
+      latitude: Number(data.latitude),
+      longitude: Number(data.longitude),
+      accuracy: data.accuracy == null ? null : Number(data.accuracy),
+      openTime: String(data.openTime || ""),
+      closeTime: String(data.closeTime || ""),
+      image: String(data.image || ""),
+      imagePublicId: String(data.bannerPublicId || ""),
+      bannerImage: String(data.bannerImage || data.image || ""),
+      bannerPublicId: String(data.bannerPublicId || ""),
+      open: data.open !== false
+    };
+  }
+
+  function localListing(document, userId) {
+    const data = document.data() || {};
+    const { ownerId, restaurantId, source, updatedAt, ...listing } = data;
+    return { id: localDocumentId(document.id, userId), ...listing };
+  }
+
+  async function loadRemoteState() {
+    const context = await ready();
+    const userId = context.user.uid;
+    const [businessDocument, dishSnapshot, planSnapshot] = await Promise.all([
+      context.db.collection("restaurants").doc(userId).get(),
+      context.db.collection("dishes").where("restaurantId", "==", userId).get(),
+      context.db.collection("messPlans").where("restaurantId", "==", userId).get()
+    ]);
+
+    if (!businessDocument.exists) {
+      return { onboarded: false, service: null, business: null, dishes: [], plans: [] };
+    }
+
+    const businessData = businessDocument.data() || {};
+    return {
+      onboarded: true,
+      service: businessData.service === "mess" ? "mess" : "food",
+      business: localBusiness(businessData),
+      dishes: dishSnapshot.docs.map(document => localListing(document, userId)),
+      plans: planSnapshot.docs.map(document => localListing(document, userId))
+    };
   }
 
   async function deleteDocuments(context, documents) {
@@ -255,11 +353,12 @@
     ]);
     await deleteDocuments(context, [...dishSnapshot.docs, ...planSnapshot.docs]);
     await context.db.collection("restaurants").doc(context.user.uid).delete();
-    localStorage.removeItem(PENDING_DELETE_KEY);
+    localStorage.removeItem(pendingDeleteKey(context.user.uid));
   }
 
   window.HapycureFirebase = {
     ready,
+    loadRemoteState,
     syncBusiness,
     syncDish,
     syncPlan,

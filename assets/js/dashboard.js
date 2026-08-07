@@ -704,6 +704,7 @@
     } finally {
       localStorage.removeItem("hapycurePartnerAuthenticated");
       localStorage.removeItem("hapycurePartnerUser");
+      localStorage.removeItem("hapycurePartnerV2");
       sessionStorage.removeItem("hapycurePartnerGoogleRedirectPending");
       location.replace("../");
     }

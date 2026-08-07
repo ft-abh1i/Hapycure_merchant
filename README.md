@@ -34,9 +34,9 @@ Dish images are converted to WebP and intelligently compressed in the browser be
 ## Firebase setup
 
 1. In Firebase Console, open project `nutrilious-ceebd`.
-2. Go to **Authentication → Sign-in method** and enable **Anonymous**.
-3. In **Firestore Database → Rules**, add the three collection blocks from `firestore-merchant.rules.snippet` inside the existing database match block. Keep the current `users` and `supportTickets` rules.
+2. Go to **Authentication → Sign-in method** and enable **Google**. Partner data is scoped to the signed-in Google account UID.
+3. In **Firestore Database → Rules**, replace the editor contents with the complete rules from `firestore-merchant.rules.snippet`.
 4. Publish the rules.
 5. Add the deployed merchant website domain under **Authentication → Settings → Authorized domains**.
 
-The customer app listens to `restaurants`, `dishes`, and `messPlans` in real time. Active dishes and mess plans from an open partner appear automatically without copying data between repositories.
+The rules cover both Hapycure apps: customer accounts and support tickets, plus partner profiles, dishes, and mess plans. The customer app listens to `restaurants`, `dishes`, and `messPlans` in real time. Active dishes and mess plans from an open partner appear automatically without copying data between repositories.

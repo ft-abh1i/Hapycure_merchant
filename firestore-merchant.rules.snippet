@@ -1,53 +1,301 @@
-// Add these match blocks inside your existing:
-// service cloud.firestore {
-//   match /databases/{database}/documents {
-//     ...
-//   }
-// }
-//
-// Keep the existing users/supportTickets rules used by the Hapycure customer app.
+rules_version = '2';
 
-match /restaurants/{restaurantId} {
-  allow read: if true;
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-  allow create, update: if request.auth != null
-    && request.auth.uid == restaurantId
-    && request.resource.data.ownerId == request.auth.uid;
+    function signedIn() {
+      return request.auth != null;
+    }
 
-  allow delete: if request.auth != null
-    && request.auth.uid == restaurantId;
-}
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
 
-match /dishes/{dishId} {
-  allow read: if true;
+    function isNumber(value) {
+      return value is int || value is float;
+    }
 
-  allow create: if request.auth != null
-    && request.resource.data.ownerId == request.auth.uid
-    && request.resource.data.restaurantId == request.auth.uid;
+    function isMarketplaceDocument(data) {
+      return data.source == "hapycure-merchant";
+    }
 
-  allow update: if request.auth != null
-    && resource.data.ownerId == request.auth.uid
-    && request.resource.data.ownerId == request.auth.uid
-    && request.resource.data.restaurantId == request.auth.uid;
+    function validUser(data) {
+      return data.keys().hasOnly([
+          "uid", "name", "email", "phone", "photoURL", "provider",
+          "lastLoginAt", "dietProfile", "dietProfileCompleted",
+          "dietProfileUpdatedAt"
+        ])
+        && data.keys().hasAll([
+          "uid", "name", "email", "phone", "photoURL", "provider",
+          "lastLoginAt"
+        ])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && data.name is string
+        && data.name.size() <= 100
+        && data.email is string
+        && data.email.size() <= 200
+        && data.phone is string
+        && data.phone.size() <= 20
+        && data.photoURL is string
+        && data.photoURL.size() <= 2048
+        && data.provider in ["google", "phone"]
+        && data.lastLoginAt is timestamp
+        && (!("dietProfile" in data) || data.dietProfile is map)
+        && (!("dietProfileCompleted" in data) || data.dietProfileCompleted is bool)
+        && (!("dietProfileUpdatedAt" in data) || data.dietProfileUpdatedAt is timestamp);
+    }
 
-  allow delete: if request.auth != null
-    && resource.data.ownerId == request.auth.uid;
-}
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
 
-match /messPlans/{planId} {
-  allow read: if true;
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && validUser(request.resource.data);
 
-  allow create: if request.auth != null
-    && request.resource.data.ownerId == request.auth.uid
-    && request.resource.data.restaurantId == request.auth.uid
-    && request.resource.data.source == "hapycure-merchant";
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
 
-  allow update: if request.auth != null
-    && resource.data.ownerId == request.auth.uid
-    && request.resource.data.ownerId == request.auth.uid
-    && request.resource.data.restaurantId == request.auth.uid
-    && request.resource.data.source == "hapycure-merchant";
+    function validSupportTicket(data, ticketId) {
+      return data.keys().hasOnly([
+          "ticketId", "issueType", "orderId", "details", "status", "source",
+          "userId", "userPhone", "userEmail", "createdAt", "localCreatedAt"
+        ])
+        && data.keys().hasAll([
+          "ticketId", "issueType", "orderId", "details", "status", "source",
+          "userId", "userPhone", "userEmail", "createdAt", "localCreatedAt"
+        ])
+        && data.ticketId == ticketId
+        && data.ticketId.matches("^NUT-[0-9]{6}$")
+        && data.userId == request.auth.uid
+        && data.issueType is string
+        && data.issueType.size() > 0
+        && data.issueType.size() <= 100
+        && data.orderId is string
+        && data.orderId.size() <= 100
+        && data.details is string
+        && data.details.size() >= 15
+        && data.details.size() <= 2000
+        && data.status == "pending"
+        && data.source == "help-support-page"
+        && data.userPhone is string
+        && data.userPhone.size() <= 20
+        && data.userEmail is string
+        && data.userEmail.size() <= 200
+        && data.createdAt is timestamp
+        && data.localCreatedAt is string
+        && data.localCreatedAt.size() <= 50;
+    }
 
-  allow delete: if request.auth != null
-    && resource.data.ownerId == request.auth.uid;
+    match /supportTickets/{ticketId} {
+      allow create: if signedIn()
+        && validSupportTicket(request.resource.data, ticketId);
+
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow update, delete: if isAdmin();
+    }
+
+    function validRestaurant(data, restaurantId) {
+      return data.keys().hasOnly([
+          "ownerId", "service", "name", "subtype", "foodType", "phone",
+          "address", "latitude", "longitude", "accuracy", "openTime",
+          "closeTime", "image", "bannerImage", "bannerPublicId", "open",
+          "published", "source", "updatedAt"
+        ])
+        && data.keys().hasAll([
+          "ownerId", "service", "name", "subtype", "foodType", "phone",
+          "address", "latitude", "longitude", "accuracy", "openTime",
+          "closeTime", "image", "bannerImage", "bannerPublicId", "open",
+          "published", "source", "updatedAt"
+        ])
+        && restaurantId == request.auth.uid
+        && data.ownerId == request.auth.uid
+        && data.source == "hapycure-merchant"
+        && data.service in ["food", "mess"]
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 100
+        && data.subtype is string
+        && data.subtype.size() <= 100
+        && data.foodType is string
+        && data.foodType.size() <= 100
+        && data.phone is string
+        && data.phone.size() <= 20
+        && data.address is string
+        && data.address.size() > 0
+        && data.address.size() <= 500
+        && isNumber(data.latitude)
+        && data.latitude >= -90
+        && data.latitude <= 90
+        && isNumber(data.longitude)
+        && data.longitude >= -180
+        && data.longitude <= 180
+        && (data.accuracy == null || isNumber(data.accuracy))
+        && data.openTime is string
+        && data.openTime.size() <= 10
+        && data.closeTime is string
+        && data.closeTime.size() <= 10
+        && data.image is string
+        && data.image.size() <= 2048
+        && data.bannerImage is string
+        && data.bannerImage.size() <= 2048
+        && data.bannerPublicId is string
+        && data.bannerPublicId.size() <= 500
+        && data.open is bool
+        && data.published is bool
+        && data.updatedAt is timestamp;
+    }
+
+    match /restaurants/{restaurantId} {
+      allow read: if isMarketplaceDocument(resource.data)
+        || (signedIn() && request.auth.uid == restaurantId);
+
+      allow create: if signedIn()
+        && validRestaurant(request.resource.data, restaurantId);
+
+      allow update: if signedIn()
+        && request.auth.uid == restaurantId
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.source == resource.data.source
+        && request.resource.data.service == resource.data.service
+        && validRestaurant(request.resource.data, restaurantId);
+
+      allow delete: if signedIn()
+        && request.auth.uid == restaurantId
+        && resource.data.ownerId == request.auth.uid;
+    }
+
+    function validDish(data) {
+      return data.keys().hasOnly([
+          "ownerId", "restaurantId", "name", "category", "dietType", "price",
+          "description", "image", "imagePublicId", "active", "source", "updatedAt"
+        ])
+        && data.keys().hasAll([
+          "ownerId", "restaurantId", "name", "category", "dietType", "price",
+          "description", "image", "imagePublicId", "active", "source", "updatedAt"
+        ])
+        && data.ownerId == request.auth.uid
+        && data.restaurantId == request.auth.uid
+        && data.source == "hapycure-merchant"
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60
+        && data.category in [
+          "Breakfast", "Lunch", "Dinner", "Snack", "Snacks",
+          "Drink", "Drinks", "Beverages", "Dessert", "Desserts"
+        ]
+        && data.dietType in ["Veg", "Non-veg", "Non-Veg"]
+        && isNumber(data.price)
+        && data.price >= 1
+        && data.price <= 100000
+        && data.description is string
+        && data.description.size() <= 180
+        && data.image is string
+        && data.image.size() > 0
+        && data.image.size() <= 2048
+        && data.imagePublicId is string
+        && data.imagePublicId.size() <= 500
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    match /dishes/{dishId} {
+      allow read: if isMarketplaceDocument(resource.data)
+        || (signedIn() && resource.data.restaurantId == request.auth.uid);
+
+      allow create: if signedIn() && validDish(request.resource.data);
+
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.restaurantId == resource.data.restaurantId
+        && request.resource.data.source == resource.data.source
+        && validDish(request.resource.data);
+
+      allow delete: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.restaurantId == request.auth.uid;
+    }
+
+    function validDayMenu(menu) {
+      return menu is map
+        && menu.keys().hasOnly([
+          "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+        ])
+        && menu.keys().hasAll([
+          "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+        ])
+        && menu.Monday is string && menu.Monday.size() > 0 && menu.Monday.size() <= 500
+        && menu.Tuesday is string && menu.Tuesday.size() > 0 && menu.Tuesday.size() <= 500
+        && menu.Wednesday is string && menu.Wednesday.size() > 0 && menu.Wednesday.size() <= 500
+        && menu.Thursday is string && menu.Thursday.size() > 0 && menu.Thursday.size() <= 500
+        && menu.Friday is string && menu.Friday.size() > 0 && menu.Friday.size() <= 500
+        && menu.Saturday is string && menu.Saturday.size() > 0 && menu.Saturday.size() <= 500
+        && menu.Sunday is string && menu.Sunday.size() > 0 && menu.Sunday.size() <= 500;
+    }
+
+    function validMealMenus(mealMenus) {
+      return mealMenus is map
+        && mealMenus.keys().hasOnly(["Breakfast", "Lunch", "Dinner"])
+        && (!("Breakfast" in mealMenus) || validDayMenu(mealMenus.Breakfast))
+        && (!("Lunch" in mealMenus) || validDayMenu(mealMenus.Lunch))
+        && (!("Dinner" in mealMenus) || validDayMenu(mealMenus.Dinner));
+    }
+
+    function validMessPlan(data) {
+      return data.keys().hasOnly([
+          "ownerId", "restaurantId", "name", "cycle", "price", "meals",
+          "deliveryDays", "menu", "mealMenus", "active", "source", "updatedAt"
+        ])
+        && data.keys().hasAll([
+          "ownerId", "restaurantId", "name", "cycle", "price", "meals",
+          "deliveryDays", "menu", "active", "source", "updatedAt"
+        ])
+        && data.ownerId == request.auth.uid
+        && data.restaurantId == request.auth.uid
+        && data.source == "hapycure-merchant"
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 60
+        && data.cycle in ["Weekly", "Monthly"]
+        && isNumber(data.price)
+        && data.price >= 1
+        && data.price <= 100000
+        && data.meals in [
+          "Lunch", "Dinner", "Lunch & Dinner", "Breakfast, Lunch & Dinner"
+        ]
+        && data.deliveryDays in [
+          "7 days a week", "6 days a week", "Weekdays only"
+        ]
+        && validDayMenu(data.menu)
+        && (!("mealMenus" in data) || validMealMenus(data.mealMenus))
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    match /messPlans/{planId} {
+      allow read: if isMarketplaceDocument(resource.data)
+        || (signedIn() && resource.data.restaurantId == request.auth.uid);
+
+      allow create: if signedIn() && validMessPlan(request.resource.data);
+
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.restaurantId == resource.data.restaurantId
+        && request.resource.data.source == resource.data.source
+        && validMessPlan(request.resource.data);
+
+      allow delete: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.restaurantId == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
 }

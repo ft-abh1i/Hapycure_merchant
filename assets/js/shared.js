@@ -1,7 +1,9 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "hapycurePartnerV2";
+  const STORAGE_KEY_PREFIX = "hapycurePartnerV2_";
+  const LEGACY_STORAGE_KEY = "hapycurePartnerV2";
+  const USER_KEY = "hapycurePartnerUser";
   const REVERSE_CACHE_KEY = "hapycureReverseGeocodeCache";
   const REVERSE_GEOCODER_URL = "https://nominatim.openstreetmap.org/reverse";
   let lastGeocodeRequest = 0;
@@ -16,16 +18,35 @@
     };
   }
 
-  function loadState() {
+  function partnerUserId() {
     try {
-      return { ...blankState(), ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
+      const user = JSON.parse(localStorage.getItem(USER_KEY) || "{}");
+      return String(user?.uid || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function stateStorageKey(userId = partnerUserId()) {
+    const normalizedUserId = String(userId || "").trim();
+    return normalizedUserId ? `${STORAGE_KEY_PREFIX}${normalizedUserId}` : "";
+  }
+
+  function loadState() {
+    const storageKey = stateStorageKey();
+    if (!storageKey) return blankState();
+    try {
+      return { ...blankState(), ...JSON.parse(localStorage.getItem(storageKey) || "{}") };
     } catch (_) {
       return blankState();
     }
   }
 
   function saveState(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const storageKey = stateStorageKey();
+    if (!storageKey) throw new Error("Partner account is not available.");
+    localStorage.setItem(storageKey, JSON.stringify(state));
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   }
 
   function escapeHTML(value) {
@@ -182,6 +203,8 @@
 
   window.Hapycure = {
     blankState,
+    partnerUserId,
+    stateStorageKey,
     loadState,
     saveState,
     escapeHTML,

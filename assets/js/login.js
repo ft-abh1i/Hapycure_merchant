@@ -4,6 +4,8 @@
   const AUTH_KEY = "hapycurePartnerAuthenticated";
   const USER_KEY = "hapycurePartnerUser";
   const REDIRECT_KEY = "hapycurePartnerGoogleRedirectPending";
+  const STATE_KEY_PREFIX = "hapycurePartnerV2_";
+  const LEGACY_STATE_KEY = "hapycurePartnerV2";
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyCzD-QcA0K-rSXM5VZYsGB2bE3FEfhkyX0",
     authDomain: "nutrilious-ceebd.firebaseapp.com",
@@ -20,23 +22,27 @@
   let signInCompleted = false;
   let auth = null;
 
-  function partnerDestination() {
+  function stateKey(userId) {
+    return `${STATE_KEY_PREFIX}${String(userId || "").trim()}`;
+  }
+
+  function cachedPartnerState(userId) {
     let state = {};
     try {
-      state = JSON.parse(localStorage.getItem("hapycurePartnerV2") || "{}");
+      state = JSON.parse(localStorage.getItem(stateKey(userId)) || "{}");
     } catch (_) {}
+    return state;
+  }
+
+  function partnerDestination(userId) {
+    const state = cachedPartnerState(userId);
     return state.onboarded
-      ? "./dashboard/?v=2026-08-07-partner-login-v1"
-      : "./onboarding/?v=2026-08-07-partner-login-v1";
+      ? "./dashboard/?v=2026-08-07-account-state-v2"
+      : "./onboarding/?v=2026-08-07-account-state-v2";
   }
 
-  function enterPartnerApp() {
-    location.replace(partnerDestination());
-  }
-
-  if (localStorage.getItem(AUTH_KEY) === "true") {
-    enterPartnerApp();
-    return;
+  function enterPartnerApp(userId) {
+    location.replace(partnerDestination(userId));
   }
 
   function setMessage(message, success = false) {
@@ -74,7 +80,6 @@
   async function completeGoogleSignIn(user) {
     if (signInCompleted || !user || user.isAnonymous) return;
     signInCompleted = true;
-    localStorage.setItem(AUTH_KEY, "true");
     localStorage.setItem(USER_KEY, JSON.stringify({
       uid: user.uid || "",
       name: user.displayName || "",
@@ -85,8 +90,26 @@
     }));
     sessionStorage.removeItem(REDIRECT_KEY);
     setBusy(true);
+    setMessage("Loading your partner profile…", true);
+
+    try {
+      const remoteState = await window.HapycureFirebase.loadRemoteState();
+      localStorage.setItem(stateKey(user.uid), JSON.stringify(remoteState));
+      localStorage.removeItem(LEGACY_STATE_KEY);
+    } catch (error) {
+      if (!cachedPartnerState(user.uid).onboarded) {
+        signInCompleted = false;
+        localStorage.removeItem(AUTH_KEY);
+        setMessage("Could not load your partner profile. Check your connection and try again.");
+        setBusy(false);
+        return;
+      }
+      console.warn("Using this account's cached partner profile.", error);
+    }
+
+    localStorage.setItem(AUTH_KEY, "true");
     setMessage("Signed in successfully.", true);
-    setTimeout(enterPartnerApp, 180);
+    enterPartnerApp(user.uid);
   }
 
   async function popupGoogleSignIn(currentAuth, provider) {
@@ -177,6 +200,10 @@
     });
     currentAuth.onAuthStateChanged(user => {
       if (user && !user.isAnonymous) completeGoogleSignIn(user);
+      else if (!user) {
+        localStorage.removeItem(AUTH_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
     });
   } catch (error) {
     setMessage(friendlyGoogleError(error));
