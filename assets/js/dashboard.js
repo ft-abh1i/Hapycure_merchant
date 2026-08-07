@@ -13,6 +13,11 @@
   let activePlanMeal = "";
   let state = app.loadState();
 
+  if (localStorage.getItem("hapycurePartnerAuthenticated") !== "true") {
+    location.replace("../");
+    return;
+  }
+
   if (!state.onboarded || !state.business) {
     location.replace("../onboarding/");
     return;

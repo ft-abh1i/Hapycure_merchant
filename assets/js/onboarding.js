@@ -6,6 +6,11 @@
   const $$ = selector => [...document.querySelectorAll(selector)];
   let selectedService = null;
 
+  if (localStorage.getItem("hapycurePartnerAuthenticated") !== "true") {
+    location.replace("../");
+    return;
+  }
+
   if (app.loadState().onboarded) {
     location.replace("../dashboard/");
     return;
