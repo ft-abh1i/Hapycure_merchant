@@ -7,6 +7,8 @@
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   let imageUploadInProgress = false;
   let localPreviewUrl = null;
+  let planMealMenus = {};
+  let activePlanMeal = "";
   let state = app.loadState();
 
   if (!state.onboarded || !state.business) {
@@ -281,6 +283,78 @@
     setDishImagePreview("");
   }
 
+  function includedMeals(value) {
+    if (value === "Lunch & Dinner") return ["Lunch", "Dinner"];
+    if (value === "Breakfast, Lunch & Dinner") return ["Breakfast", "Lunch", "Dinner"];
+    return [value || "Lunch"];
+  }
+
+  function ensurePlanMeal(meal) {
+    if (!planMealMenus[meal]) {
+      planMealMenus[meal] = Object.fromEntries(days.map(day => [day, ""]));
+    }
+  }
+
+  function captureActivePlanMeal() {
+    if (!activePlanMeal) return;
+    ensurePlanMeal(activePlanMeal);
+    const form = $("#planForm");
+    days.forEach(day => {
+      planMealMenus[activePlanMeal][day] = form.elements[day].value.trim();
+    });
+  }
+
+  function showActivePlanMeal() {
+    const form = $("#planForm");
+    ensurePlanMeal(activePlanMeal);
+    days.forEach(day => {
+      form.elements[day].value = planMealMenus[activePlanMeal][day] || "";
+      form.elements[day].placeholder = `Enter ${activePlanMeal.toLowerCase()} menu for ${day}`;
+    });
+    $$("#mealMenuTabs [data-meal]").forEach(button => {
+      const selected = button.dataset.meal === activePlanMeal;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+  }
+
+  function renderPlanMealTabs() {
+    captureActivePlanMeal();
+    const meals = includedMeals($("#planForm").elements.meals.value);
+    meals.forEach(ensurePlanMeal);
+    if (!meals.includes(activePlanMeal)) activePlanMeal = meals[0];
+    $("#mealMenuTabs").innerHTML = meals.map(meal => `
+      <button class="meal-menu-tab" data-meal="${meal}" type="button" aria-pressed="false">${meal}</button>
+    `).join("");
+    showActivePlanMeal();
+  }
+
+  function switchPlanMeal(meal) {
+    if (!includedMeals($("#planForm").elements.meals.value).includes(meal)) return;
+    captureActivePlanMeal();
+    activePlanMeal = meal;
+    showActivePlanMeal();
+  }
+
+  function resetPlanMealMenus(item = null) {
+    const meals = includedMeals($("#planForm").elements.meals.value);
+    planMealMenus = {};
+    meals.forEach(meal => {
+      const savedMenu = item?.mealMenus?.[meal];
+      planMealMenus[meal] = Object.fromEntries(days.map(day => [
+        day,
+        typeof savedMenu?.[day] === "string" ? savedMenu[day] : ""
+      ]));
+    });
+    if (item?.menu && !item.mealMenus) {
+      days.forEach(day => {
+        planMealMenus[meals[0]][day] = typeof item.menu[day] === "string" ? item.menu[day] : "";
+      });
+    }
+    activePlanMeal = "";
+    renderPlanMealTabs();
+  }
+
   function openPlanForm(item = null) {
     const form = $("#planForm");
     form.reset();
@@ -290,9 +364,9 @@
       ["id", "name", "cycle", "price", "meals", "deliveryDays"].forEach(key => {
         form.elements[key].value = item[key] || "";
       });
-      days.forEach(day => form.elements[day].value = item.menu?.[day] || "");
       form.elements.active.checked = item.active;
     }
+    resetPlanMealMenus(item);
     app.showModal("planModal");
   }
 
@@ -331,6 +405,20 @@
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
+    captureActivePlanMeal();
+    const meals = includedMeals(data.meals);
+    const missingMenu = meals.flatMap(meal =>
+      days.map(day => ({ meal, day, value: planMealMenus[meal]?.[day]?.trim() || "" }))
+    ).find(entry => !entry.value);
+    if (missingMenu) {
+      switchPlanMeal(missingMenu.meal);
+      form.elements[missingMenu.day].focus();
+      app.toast(`Add ${missingMenu.meal.toLowerCase()} menu for ${missingMenu.day}`);
+      return;
+    }
+    const mealMenus = Object.fromEntries(meals.map(meal => [meal,
+      Object.fromEntries(days.map(day => [day, planMealMenus[meal][day].trim()]))
+    ]));
     const item = {
       id: data.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: data.name.trim(),
@@ -339,7 +427,12 @@
       meals: data.meals,
       deliveryDays: data.deliveryDays,
       active: form.elements.active.checked,
-      menu: Object.fromEntries(days.map(day => [day, data[day].trim()]))
+      mealMenus,
+      menu: Object.fromEntries(days.map(day => [day,
+        meals.length === 1
+          ? mealMenus[meals[0]][day]
+          : meals.map(meal => `${meal}: ${mealMenus[meal][day]}`).join(" • ")
+      ]))
     };
     const index = state.plans.findIndex(plan => plan.id === item.id);
     if (index >= 0) state.plans[index] = item;
@@ -456,6 +549,11 @@
   $("#profileForm").addEventListener("submit", saveProfile);
   $("#dishForm").addEventListener("submit", saveDish);
   $("#planForm").addEventListener("submit", savePlan);
+  $("#planForm").elements.meals.addEventListener("change", renderPlanMealTabs);
+  $("#mealMenuTabs").addEventListener("click", event => {
+    const button = event.target.closest("[data-meal]");
+    if (button) switchPlanMeal(button.dataset.meal);
+  });
   $("#chooseDishImage").addEventListener("click", () => $("#dishImageFile").click());
   $("#dishImageFile").addEventListener("change", uploadSelectedDishImage);
   $("#removeDishImage").addEventListener("click", removeDishImage);

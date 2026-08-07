@@ -955,6 +955,30 @@
 
     .switch-row small { display: block; margin-top: 3px; color: var(--muted); font-weight: 600; }
     .switch-row input { width: 42px; height: 23px; accent-color: var(--red); }
+    .meal-menu-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 11px;
+    }
+
+    .meal-menu-tab {
+      min-height: 36px;
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 850;
+    }
+
+    .meal-menu-tab.active {
+      border-color: var(--red);
+      background: var(--red);
+      color: #fff;
+    }
+
     .days-menu {
       display: grid;
       grid-template-columns: 1fr 1fr;
