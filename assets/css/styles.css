@@ -440,6 +440,14 @@
       backdrop-filter: blur(14px);
     }
 
+    .dashboard-brand-logo {
+      display: block;
+      width: 142px;
+      height: 44px;
+      object-fit: contain;
+      object-position: left center;
+    }
+
     .top-actions { display: flex; align-items: center; gap: 8px; }
     .status-pill {
       display: flex;
