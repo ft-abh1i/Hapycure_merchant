@@ -693,20 +693,19 @@
   $("#detectProfileLocation").addEventListener("click", () =>
     app.detectLocation(document.querySelector('[data-location-picker="profile"]'), "Update current location")
   );
-  $("#restartOnboarding").addEventListener("click", async event => {
-    if (!confirm("Changing service type will remove the current profile and all listings. Continue?")) return;
+  $("#logoutPartner").addEventListener("click", async event => {
     const button = event.currentTarget;
     button.disabled = true;
-    button.textContent = "Removing current listings…";
+    button.textContent = "Logging out…";
     try {
-      await window.HapycureFirebase.removePartnerData();
-      app.saveState(app.blankState());
-      location.replace("../onboarding/");
+      if (window.firebase?.auth) await firebase.auth().signOut();
     } catch (error) {
-      console.error("Firebase partner removal failed:", error);
-      button.disabled = false;
-      button.textContent = "Change service type";
-      app.toast("Could not remove live listings. Try again.");
+      console.warn("Firebase sign-out failed; clearing the local session.", error);
+    } finally {
+      localStorage.removeItem("hapycurePartnerAuthenticated");
+      localStorage.removeItem("hapycurePartnerUser");
+      sessionStorage.removeItem("hapycurePartnerGoogleRedirectPending");
+      location.replace("../");
     }
   });
   $$("[data-close]").forEach(button =>
