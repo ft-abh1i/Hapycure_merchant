@@ -105,15 +105,38 @@
           <input name="longitude" type="hidden">
           <input name="accuracy" type="hidden">
         </div>
-        <div class="field-row">
+        <div class="field-row" id="businessHoursFields">
           <label>Opening time<input name="openTime" type="time" required></label>
           <label>Closing time<input name="closeTime" type="time" required></label>
+        </div>
+        <div class="image-upload-field hidden" id="messBannerField">
+          <label>Mess banner photo</label>
+          <div class="image-upload-box">
+            <div class="dish-image-preview" id="messBannerPreview">
+              <div class="dish-image-placeholder" id="messBannerPlaceholder">
+                <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 11l2-2 4 4 2-2 4 4M8 8h.01"/></svg>
+                <span>No banner selected</span>
+              </div>
+              <img id="messBannerPreviewImage" alt="Mess banner preview" hidden>
+            </div>
+            <input id="messBannerFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <input name="bannerImage" type="hidden">
+            <input name="bannerPublicId" type="hidden">
+            <div class="image-upload-actions">
+              <button class="secondary" id="chooseMessBanner" type="button">Choose banner</button>
+              <button class="image-remove hidden" id="removeMessBanner" type="button">Remove</button>
+            </div>
+            <div class="image-upload-progress hidden" id="messBannerProgress">
+              <span id="messBannerProgressBar"></span>
+            </div>
+            <p class="image-upload-status" id="messBannerStatus" aria-live="polite"></p>
+          </div>
         </div>
         <label class="switch-row">
           <span><b>Accepting orders</b><small>Customers can see and order active listings</small></span>
           <input name="open" type="checkbox">
         </label>
-        <button class="primary" type="submit">Save changes</button>
+        <button class="primary" id="profileSaveButton" type="submit">Save changes</button>
         <button class="secondary" id="restartOnboarding" type="button">Change service type</button>
       </form>
     </div>
@@ -235,8 +258,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="../assets/js/shared.js?v=2026-08-07-cloudinary-upload-v2"></script>
-  <script src="../assets/js/firebase-sync.js?v=2026-08-07-cloudinary-upload-v2"></script>
+  <script src="../assets/js/firebase-sync.js?v=2026-08-07-mess-banner-v1"></script>
   <script src="../assets/js/cloudinary.js?v=2026-08-07-cloudinary-upload-v2"></script>
-  <script src="../assets/js/dashboard.js?v=2026-08-07-meal-menu-v1"></script>
+  <script src="../assets/js/dashboard.js?v=2026-08-07-mess-banner-v1"></script>
 </body>
 </html>

@@ -7,6 +7,8 @@
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   let imageUploadInProgress = false;
   let localPreviewUrl = null;
+  let bannerUploadInProgress = false;
+  let bannerPreviewUrl = null;
   let planMealMenus = {};
   let activePlanMeal = "";
   let state = app.loadState();
@@ -37,8 +39,9 @@
     $("#catalogueSearch").placeholder = isMess ? "Search plans" : "Search dishes";
     $("#businessTypeLabel").textContent = business.subtype.toUpperCase();
     $("#businessName").textContent = business.name;
-    $("#businessMeta").textContent =
-      `${business.foodType} • ${business.address} • ${app.formatTime(business.openTime)}–${app.formatTime(business.closeTime)}`;
+    $("#businessMeta").textContent = isMess
+      ? `${business.foodType} • ${business.address}`
+      : `${business.foodType} • ${business.address} • ${app.formatTime(business.openTime)}–${app.formatTime(business.closeTime)}`;
     $("#businessStatus").textContent = business.open ? "Accepting orders" : "Temporarily closed";
     $("#businessStatus").classList.toggle("closed", !business.open);
     $("#totalCount").textContent = items.length;
@@ -453,9 +456,15 @@
   function openProfileForm() {
     const form = $("#profileForm");
     const business = state.business;
+    const isMess = state.service === "mess";
     ["name", "foodType", "phone", "openTime", "closeTime"].forEach(key => {
       form.elements[key].value = business[key] || "";
     });
+    $("#businessHoursFields").classList.toggle("hidden", isMess);
+    $("#messBannerField").classList.toggle("hidden", !isMess);
+    form.elements.openTime.required = !isMess;
+    form.elements.closeTime.required = !isMess;
+    resetMessBannerUploader();
     form.elements.open.checked = business.open;
     const picker = document.querySelector('[data-location-picker="profile"]');
     app.resetLocationPicker(picker);
@@ -465,8 +474,13 @@
 
   async function saveProfile(event) {
     event.preventDefault();
+    if (bannerUploadInProgress) {
+      app.toast("Wait for the banner upload to finish");
+      return;
+    }
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
+    const isMess = state.service === "mess";
     const picker = document.querySelector('[data-location-picker="profile"]');
     if (!data.address || !data.latitude || !data.longitude) {
       app.setLocationStatus(picker, "Detect your current location before saving.", true);
@@ -482,8 +496,12 @@
       latitude: Number(data.latitude),
       longitude: Number(data.longitude),
       accuracy: Number(data.accuracy) || null,
-      openTime: data.openTime,
-      closeTime: data.closeTime,
+      openTime: isMess ? "" : data.openTime,
+      closeTime: isMess ? "" : data.closeTime,
+      image: isMess ? data.bannerImage : (state.business.image || ""),
+      imagePublicId: isMess ? data.bannerPublicId : (state.business.imagePublicId || ""),
+      bannerImage: isMess ? data.bannerImage : (state.business.bannerImage || ""),
+      bannerPublicId: isMess ? data.bannerPublicId : (state.business.bannerPublicId || ""),
       open: form.elements.open.checked
     };
     app.saveState(state);
@@ -497,6 +515,113 @@
       console.error("Firebase business sync failed:", error);
       app.toast("Saved locally; customer sync pending");
     }
+  }
+
+  function setMessBannerPreview(url) {
+    const image = $("#messBannerPreviewImage");
+    const placeholder = $("#messBannerPlaceholder");
+    image.hidden = !url;
+    placeholder.classList.toggle("hidden", Boolean(url));
+    if (url) image.src = url;
+    else image.removeAttribute("src");
+    $("#removeMessBanner").classList.toggle("hidden", !url);
+  }
+
+  function setMessBannerStatus(message, type = "") {
+    const status = $("#messBannerStatus");
+    status.textContent = message;
+    status.classList.toggle("error", type === "error");
+    status.classList.toggle("success", type === "success");
+  }
+
+  function resetMessBannerUploader() {
+    if (bannerPreviewUrl) {
+      URL.revokeObjectURL(bannerPreviewUrl);
+      bannerPreviewUrl = null;
+    }
+    const business = state.business || {};
+    const bannerImage = business.bannerImage || business.image || "";
+    const bannerPublicId = business.bannerPublicId || business.imagePublicId || "";
+    bannerUploadInProgress = false;
+    $("#messBannerFile").value = "";
+    $("#profileForm").elements.bannerImage.value = bannerImage;
+    $("#profileForm").elements.bannerPublicId.value = bannerPublicId;
+    $("#profileSaveButton").disabled = false;
+    $("#chooseMessBanner").disabled = false;
+    $("#messBannerProgress").classList.add("hidden");
+    $("#messBannerProgressBar").style.width = "0%";
+    setMessBannerStatus("");
+    setMessBannerPreview(bannerImage);
+  }
+
+  async function uploadMessBanner(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const form = $("#profileForm");
+    const previousImage = form.elements.bannerImage.value;
+    const previousPublicId = form.elements.bannerPublicId.value;
+
+    try {
+      window.HapycureCloudinary.validateImage(file);
+    } catch (error) {
+      setMessBannerStatus(error.message, "error");
+      event.target.value = "";
+      return;
+    }
+
+    if (bannerPreviewUrl) URL.revokeObjectURL(bannerPreviewUrl);
+    bannerPreviewUrl = URL.createObjectURL(file);
+    setMessBannerPreview(bannerPreviewUrl);
+    bannerUploadInProgress = true;
+    $("#profileSaveButton").disabled = true;
+    $("#chooseMessBanner").disabled = true;
+    $("#messBannerProgress").classList.remove("hidden");
+    setMessBannerStatus("Uploading banner…");
+
+    try {
+      const uploaded = await window.HapycureCloudinary.uploadImage(
+        file,
+        progress => {
+          $("#messBannerProgressBar").style.width = `${progress}%`;
+          setMessBannerStatus(`Uploading WebP… ${progress}%`);
+        },
+        stage => {
+          if (stage.stage === "optimizing") setMessBannerStatus("Optimizing banner to WebP…");
+          if (stage.stage === "uploading") {
+            setMessBannerStatus(`Optimized to ${formatFileSize(stage.optimizedBytes)} WebP • Uploading…`);
+          }
+        }
+      );
+      form.elements.bannerImage.value = uploaded.secureUrl;
+      form.elements.bannerPublicId.value = uploaded.publicId;
+      setMessBannerPreview(uploaded.secureUrl);
+      $("#messBannerProgressBar").style.width = "100%";
+      setMessBannerStatus(`Banner uploaded • ${formatFileSize(uploaded.optimizedBytes)} WebP`, "success");
+    } catch (error) {
+      form.elements.bannerImage.value = previousImage;
+      form.elements.bannerPublicId.value = previousPublicId;
+      setMessBannerPreview(previousImage);
+      $("#messBannerProgress").classList.add("hidden");
+      setMessBannerStatus(error.message || "Banner upload failed.", "error");
+    } finally {
+      bannerUploadInProgress = false;
+      $("#profileSaveButton").disabled = false;
+      $("#chooseMessBanner").disabled = false;
+    }
+  }
+
+  function removeMessBanner() {
+    if (bannerPreviewUrl) {
+      URL.revokeObjectURL(bannerPreviewUrl);
+      bannerPreviewUrl = null;
+    }
+    $("#messBannerFile").value = "";
+    $("#profileForm").elements.bannerImage.value = "";
+    $("#profileForm").elements.bannerPublicId.value = "";
+    $("#messBannerProgress").classList.add("hidden");
+    $("#messBannerProgressBar").style.width = "0%";
+    setMessBannerStatus("");
+    setMessBannerPreview("");
   }
 
   async function catalogueAction(event) {
@@ -547,6 +672,9 @@
   $("#openProfile").addEventListener("click", openProfileForm);
   $("#editBusiness").addEventListener("click", openProfileForm);
   $("#profileForm").addEventListener("submit", saveProfile);
+  $("#chooseMessBanner").addEventListener("click", () => $("#messBannerFile").click());
+  $("#messBannerFile").addEventListener("change", uploadMessBanner);
+  $("#removeMessBanner").addEventListener("click", removeMessBanner);
   $("#dishForm").addEventListener("submit", saveDish);
   $("#planForm").addEventListener("submit", savePlan);
   $("#planForm").elements.meals.addEventListener("change", renderPlanMealTabs);
