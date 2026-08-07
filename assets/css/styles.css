@@ -1010,6 +1010,7 @@
     }
 
     @media (max-width: 520px) {
+      #planModal .sheet { padding-top: 30px; }
       .service-grid, .field-row, .subtype-options, .days-menu { grid-template-columns: 1fr; }
       .service-card { min-height: 0; }
       .service-card ul { display: none; }
