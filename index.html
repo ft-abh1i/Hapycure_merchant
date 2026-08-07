@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Login · Hapycure Partner</title>
-  <link rel="stylesheet" href="./assets/css/login.css?v=2026-08-07-login-header-v1">
+  <link rel="stylesheet" href="./assets/css/login.css?v=2026-08-07-login-hero-v2">
 </head>
 <body>
   <main id="page-login">
@@ -20,19 +20,26 @@
             <stop offset="55%" stop-color="#E35336"></stop>
             <stop offset="100%" stop-color="#E35336"></stop>
           </linearGradient>
-          <filter id="loginSoftBlur" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="22"></feGaussianBlur>
-          </filter>
         </defs>
         <rect x="0" y="0" width="720" height="900" fill="#E35336"></rect>
         <path d="M0,270 C130,200 230,320 350,300 C470,280 540,160 720,110 L720,0 L0,0 Z" fill="url(#loginRedGrad)"></path>
-        <circle cx="205" cy="460" r="130" fill="#000000" opacity="0.28" filter="url(#loginSoftBlur)"></circle>
+        <circle cx="660" cy="35" r="220" fill="#fff" opacity="0.055"></circle>
+        <circle cx="70" cy="205" r="118" fill="none" stroke="#fff" stroke-width="2" opacity="0.12"></circle>
+        <path d="M-20 175 C130 115 220 235 365 175 S600 80 760 135" fill="none" stroke="#fff" stroke-width="3" opacity="0.1"></path>
       </svg>
 
       <div class="login-hero-copy">
-        <span>HAPYCURE PARTNER PORTAL</span>
-        <h1>Grow your food business</h1>
-        <p>Manage dishes, mess plans and availability in one place.</p>
+        <div class="login-brand-lockup">
+          <img src="./assets/images/hapycure-logo.png?v=2026-08-07-login-hero-v2" alt="Hapycure">
+          <span>PARTNER</span>
+        </div>
+        <h1>Run your food business, beautifully.</h1>
+        <p>Publish menus, create mess plans and stay available to customers.</p>
+        <div class="login-hero-features" aria-label="Partner portal features">
+          <span><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"></path></svg>Menus</span>
+          <span><svg viewBox="0 0 24 24"><path d="M5 5h14v15H5zM8 3v4M16 3v4M5 9h14"></path></svg>Mess plans</span>
+          <span><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M6 6l12 12M18 6 6 18"></path></svg>Go live</span>
+        </div>
       </div>
 
       <section class="login-card" aria-labelledby="loginTitle">

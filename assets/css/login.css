@@ -45,54 +45,101 @@ button { border: 0; background: none; cursor: pointer; touch-action: manipulatio
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  padding-top: clamp(205px, 23dvh, 270px);
+  padding-top: clamp(250px, 29dvh, 305px);
 }
 
 .login-hero-copy {
   position: absolute;
-  top: max(34px, env(safe-area-inset-top));
+  top: max(24px, env(safe-area-inset-top));
   left: 50%;
   z-index: 2;
-  width: min(100% - 40px, 390px);
+  width: min(100% - 32px, 410px);
   color: #fff;
   text-align: center;
   transform: translateX(-50%);
 }
 
-.login-hero-copy span {
+.login-brand-lockup {
   display: inline-flex;
-  padding: 6px 11px;
-  border: 1px solid rgba(255,255,255,.28);
-  border-radius: 999px;
-  background: rgba(255,255,255,.12);
-  font-size: .64rem;
-  font-weight: 800;
-  letter-spacing: .12em;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px 7px 12px;
+  border: 1px solid rgba(255,255,255,.56);
+  border-radius: 15px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 12px 28px rgba(120,36,23,.2);
+}
+
+.login-brand-lockup img {
+  display: block;
+  width: 105px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.login-brand-lockup span {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #fde9e5;
+  color: #b52e1d;
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: .11em;
 }
 
 .login-hero-copy h1 {
-  margin-top: 12px;
-  font-size: 1.7rem;
+  margin-top: 11px;
+  font-size: 1.55rem;
   font-weight: 800;
   letter-spacing: -.04em;
 }
 
 .login-hero-copy p {
-  max-width: 310px;
-  margin: 7px auto 0;
-  color: rgba(255,255,255,.78);
-  font-size: .78rem;
-  font-weight: 500;
+  max-width: 340px;
+  margin: 5px auto 0;
+  color: rgba(255,255,255,.82);
+  font-size: .73rem;
+  font-weight: 600;
   line-height: 1.45;
+}
+
+.login-hero-features {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.login-hero-features span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 999px;
+  background: rgba(137,32,20,.2);
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 750;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.login-hero-features svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .login-card {
   position: relative;
   width: 100%;
   max-width: 28rem;
-  min-height: calc(100dvh - clamp(205px, 23dvh, 270px));
+  min-height: calc(100dvh - clamp(250px, 29dvh, 305px));
   overflow: hidden;
   padding: 2rem 1.5rem max(1.25rem, env(safe-area-inset-bottom));
   border-radius: 2.5rem 2.5rem 0 0;
@@ -192,11 +239,15 @@ button { border: 0; background: none; cursor: pointer; touch-action: manipulatio
 }
 
 @media (max-height: 740px) {
-  .login-wrap { padding-top: 180px; }
-  .login-hero-copy { top: max(22px, env(safe-area-inset-top)); }
-  .login-hero-copy h1 { margin-top: 9px; font-size: 1.42rem; }
-  .login-hero-copy p { margin-top: 4px; font-size: .7rem; }
-  .login-card { min-height: calc(100dvh - 180px); padding-top: 1.55rem; }
+  .login-wrap { padding-top: 220px; }
+  .login-hero-copy { top: max(16px, env(safe-area-inset-top)); }
+  .login-brand-lockup { padding-top: 5px; padding-bottom: 5px; }
+  .login-brand-lockup img { width: 92px; height: 32px; }
+  .login-hero-copy h1 { margin-top: 7px; font-size: 1.28rem; }
+  .login-hero-copy p { margin-top: 3px; font-size: .66rem; }
+  .login-hero-features { margin-top: 7px; }
+  .login-hero-features span { padding: 5px 7px; font-size: .57rem; }
+  .login-card { min-height: calc(100dvh - 220px); padding-top: 1.55rem; }
   .login-title { font-size: 1.65rem; }
   .login-subtitle { margin-top: .3rem; }
   .login-label { margin-top: 1.1rem; }
