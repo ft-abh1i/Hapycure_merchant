@@ -3,7 +3,6 @@
 
   const AUTH_KEY = "hapycurePartnerAuthenticated";
   const USER_KEY = "hapycurePartnerUser";
-  const REDIRECT_KEY = "hapycurePartnerGoogleRedirectPending";
   const STATE_KEY_PREFIX = "hapycurePartnerV2_";
   const LEGACY_STATE_KEY = "hapycurePartnerV2";
   const FIREBASE_CONFIG = {
@@ -27,18 +26,17 @@
   }
 
   function cachedPartnerState(userId) {
-    let state = {};
     try {
-      state = JSON.parse(localStorage.getItem(stateKey(userId)) || "{}");
-    } catch (_) {}
-    return state;
+      return JSON.parse(localStorage.getItem(stateKey(userId)) || "{}");
+    } catch (_) {
+      return {};
+    }
   }
 
   function partnerDestination(userId) {
-    const state = cachedPartnerState(userId);
-    return state.onboarded
-      ? "./dashboard/?v=2026-08-07-account-state-v2"
-      : "./onboarding/?v=2026-08-07-account-state-v2";
+    return cachedPartnerState(userId).onboarded
+      ? "./dashboard/?v=2026-08-08-popup-auth-v3"
+      : "./onboarding/?v=2026-08-08-popup-auth-v3";
   }
 
   function enterPartnerApp(userId) {
@@ -68,7 +66,8 @@
   function friendlyGoogleError(error) {
     const code = error?.code || "";
     if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "Google sign-in was cancelled.";
-    if (code === "auth/popup-blocked") return "Your browser blocked the sign-in window. Redirecting to Google sign-in…";
+    if (code === "auth/popup-blocked") return "Your browser blocked the Google sign-in window. Please allow pop-ups and try again.";
+    if (code === "auth/operation-not-supported-in-this-environment") return "Google sign-in is not supported in this browser. Open this page in Chrome or Safari and try again.";
     if (code === "auth/unauthorized-domain") return "This website domain is not authorized in Firebase Authentication.";
     if (code === "auth/network-request-failed") return "Network error. Check your internet connection and try again.";
     if (code === "auth/account-exists-with-different-credential" || code === "auth/credential-already-in-use") {
@@ -88,7 +87,6 @@
       photoURL: user.photoURL || "",
       provider: "google"
     }));
-    sessionStorage.removeItem(REDIRECT_KEY);
     setBusy(true);
     setMessage("Loading your partner profile…", true);
 
@@ -119,16 +117,6 @@
     return currentAuth.signInWithPopup(provider);
   }
 
-  async function redirectGoogleSignIn(currentAuth, provider) {
-    sessionStorage.setItem(REDIRECT_KEY, "true");
-    setMessage("Redirecting to Google sign-in…", true);
-    if (currentAuth.currentUser?.isAnonymous) {
-      await currentAuth.currentUser.linkWithRedirect(provider);
-      return;
-    }
-    await currentAuth.signInWithRedirect(provider);
-  }
-
   async function startGoogleSignIn() {
     if (googleLogin.disabled) return;
     setBusy(true);
@@ -150,15 +138,6 @@
           return;
         } catch (credentialError) {
           setMessage(friendlyGoogleError(credentialError));
-          return;
-        }
-      }
-      if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
-        try {
-          await redirectGoogleSignIn(getAuth(), new firebase.auth.GoogleAuthProvider());
-          return;
-        } catch (redirectError) {
-          setMessage(friendlyGoogleError(redirectError));
         }
       } else {
         setMessage(friendlyGoogleError(error));
@@ -192,12 +171,6 @@
   try {
     const currentAuth = getAuth();
     currentAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-    currentAuth.getRedirectResult().then(result => {
-      if (result?.user) completeGoogleSignIn(result.user);
-    }).catch(error => {
-      if (sessionStorage.getItem(REDIRECT_KEY) === "true") setMessage(friendlyGoogleError(error));
-      sessionStorage.removeItem(REDIRECT_KEY);
-    });
     currentAuth.onAuthStateChanged(user => {
       if (user && !user.isAnonymous) completeGoogleSignIn(user);
       else if (!user) {
