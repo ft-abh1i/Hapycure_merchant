@@ -195,23 +195,40 @@
     if (!plan || state?.service !== "mess" || !state?.business) return;
     const context = await ready();
     const userId = context.user.uid;
+    const restaurantRef = context.db.collection("restaurants").doc(userId);
+    const planRef = context.db.collection("messPlans").doc(planDocumentId(userId, plan.id));
+    const restaurantData = businessPayload(state, userId, context.firebase);
+    const planData = planPayload(plan, userId, context.firebase);
     const batch = context.db.batch();
 
     // A customer listing needs both the mess profile and its plan. Publishing
     // them in one commit prevents an orphaned plan when onboarding/profile sync
     // was interrupted or still pending.
     batch.set(
-      context.db.collection("restaurants").doc(userId),
-      businessPayload(state, userId, context.firebase),
+      restaurantRef,
+      restaurantData,
       { merge: true }
     );
     batch.set(
-      context.db.collection("messPlans").doc(planDocumentId(userId, plan.id)),
-      planPayload(plan, userId, context.firebase),
+      planRef,
+      planData,
       { merge: true }
     );
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (batchError) {
+      // Legacy partner profiles can fail stricter restaurant update rules. The
+      // customer app can still render a valid active plan without that profile,
+      // so publish the plan independently before surfacing a sync failure.
+      try {
+        await planRef.set(planData, { merge: true });
+        console.warn("Mess profile sync pending; plan published independently.", batchError);
+      } catch (planError) {
+        planError.profileSyncError = batchError;
+        throw planError;
+      }
+    }
   }
 
   function readPendingDeletes(userId = storedUserId()) {
