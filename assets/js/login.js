@@ -3,6 +3,7 @@
 
   const AUTH_KEY = "hapycurePartnerAuthenticated";
   const USER_KEY = "hapycurePartnerUser";
+  const REDIRECT_KEY = "hapycurePartnerGoogleRedirectPending";
   const STATE_KEY_PREFIX = "hapycurePartnerV2_";
   const LEGACY_STATE_KEY = "hapycurePartnerV2";
   const FIREBASE_CONFIG = {
@@ -35,8 +36,8 @@
 
   function partnerDestination(userId) {
     return cachedPartnerState(userId).onboarded
-      ? "./dashboard/?v=2026-08-08-popup-auth-v3"
-      : "./onboarding/?v=2026-08-08-popup-auth-v3";
+      ? "./dashboard/?v=2026-08-09-google-auth-v4"
+      : "./onboarding/?v=2026-08-09-google-auth-v4";
   }
 
   function enterPartnerApp(userId) {
@@ -69,6 +70,7 @@
     if (code === "auth/popup-blocked") return "Your browser blocked the Google sign-in window. Please allow pop-ups and try again.";
     if (code === "auth/operation-not-supported-in-this-environment") return "Google sign-in is not supported in this browser. Open this page in Chrome or Safari and try again.";
     if (code === "auth/unauthorized-domain") return "This website domain is not authorized in Firebase Authentication.";
+    if (code === "auth/operation-not-allowed") return "Google sign-in is not enabled in Firebase Authentication.";
     if (code === "auth/network-request-failed") return "Network error. Check your internet connection and try again.";
     if (code === "auth/account-exists-with-different-credential" || code === "auth/credential-already-in-use") {
       return "This Google account is already connected. Please try signing in again.";
@@ -87,6 +89,7 @@
       photoURL: user.photoURL || "",
       provider: "google"
     }));
+    sessionStorage.removeItem(REDIRECT_KEY);
     setBusy(true);
     setMessage("Loading your partner profile…", true);
 
@@ -95,14 +98,17 @@
       localStorage.setItem(stateKey(user.uid), JSON.stringify(remoteState));
       localStorage.removeItem(LEGACY_STATE_KEY);
     } catch (error) {
-      if (!cachedPartnerState(user.uid).onboarded) {
-        signInCompleted = false;
-        localStorage.removeItem(AUTH_KEY);
-        setMessage("Could not load your partner profile. Check your connection and try again.");
-        setBusy(false);
-        return;
+      const cachedState = cachedPartnerState(user.uid);
+      if (!Object.keys(cachedState).length) {
+        localStorage.setItem(stateKey(user.uid), JSON.stringify({
+          onboarded: false,
+          service: null,
+          business: null,
+          dishes: [],
+          plans: []
+        }));
       }
-      console.warn("Using this account's cached partner profile.", error);
+      console.warn("Remote partner profile unavailable; using this account's local state.", error);
     }
 
     localStorage.setItem(AUTH_KEY, "true");
@@ -115,6 +121,16 @@
       return currentAuth.currentUser.linkWithPopup(provider);
     }
     return currentAuth.signInWithPopup(provider);
+  }
+
+  async function redirectGoogleSignIn(currentAuth, provider) {
+    sessionStorage.setItem(REDIRECT_KEY, "true");
+    setMessage("Redirecting to Google sign-in…", true);
+    if (currentAuth.currentUser?.isAnonymous) {
+      await currentAuth.currentUser.linkWithRedirect(provider);
+      return;
+    }
+    await currentAuth.signInWithRedirect(provider);
   }
 
   async function startGoogleSignIn() {
@@ -138,6 +154,16 @@
           return;
         } catch (credentialError) {
           setMessage(friendlyGoogleError(credentialError));
+        }
+      } else if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+        try {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
+          await redirectGoogleSignIn(getAuth(), provider);
+          return;
+        } catch (redirectError) {
+          sessionStorage.removeItem(REDIRECT_KEY);
+          setMessage(friendlyGoogleError(redirectError));
         }
       } else {
         setMessage(friendlyGoogleError(error));
@@ -171,6 +197,12 @@
   try {
     const currentAuth = getAuth();
     currentAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+    currentAuth.getRedirectResult().then(result => {
+      if (result?.user) completeGoogleSignIn(result.user);
+    }).catch(error => {
+      if (sessionStorage.getItem(REDIRECT_KEY) === "true") setMessage(friendlyGoogleError(error));
+      sessionStorage.removeItem(REDIRECT_KEY);
+    });
     currentAuth.onAuthStateChanged(user => {
       if (user && !user.isAnonymous) completeGoogleSignIn(user);
       else if (!user) {
