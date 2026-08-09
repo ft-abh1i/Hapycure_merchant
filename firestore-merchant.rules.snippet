@@ -113,7 +113,7 @@ service cloud.firestore {
         && restaurantId == request.auth.uid
         && data.ownerId == request.auth.uid
         && data.source == "hapycure-merchant"
-        && (data.service == "food" || data.service == "mess")
+        && (data["service"] == "food" || data["service"] == "mess")
         && data.name is string
         && data.name.size() > 0
         && data.name.size() <= 100
