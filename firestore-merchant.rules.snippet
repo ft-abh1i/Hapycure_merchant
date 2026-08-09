@@ -155,12 +155,10 @@ service cloud.firestore {
       allow create: if signedIn()
         && validRestaurant(request.resource.data, restaurantId);
 
+      // The document ID is the partner UID. Validating the complete new
+      // document lets older partner profiles migrate to the current schema.
       allow update: if signedIn()
         && request.auth.uid == restaurantId
-        && resource.data.ownerId == request.auth.uid
-        && request.resource.data.ownerId == resource.data.ownerId
-        && request.resource.data.source == resource.data.source
-        && request.resource.data.service == resource.data.service
         && validRestaurant(request.resource.data, restaurantId);
 
       allow delete: if signedIn()
@@ -209,10 +207,8 @@ service cloud.firestore {
       allow create: if signedIn() && validDish(request.resource.data);
 
       allow update: if signedIn()
-        && resource.data.ownerId == request.auth.uid
-        && request.resource.data.ownerId == resource.data.ownerId
-        && request.resource.data.restaurantId == resource.data.restaurantId
-        && request.resource.data.source == resource.data.source
+        && (resource.data.ownerId == request.auth.uid
+          || resource.data.restaurantId == request.auth.uid)
         && validDish(request.resource.data);
 
       allow delete: if signedIn()
@@ -283,10 +279,8 @@ service cloud.firestore {
       allow create: if signedIn() && validMessPlan(request.resource.data);
 
       allow update: if signedIn()
-        && resource.data.ownerId == request.auth.uid
-        && request.resource.data.ownerId == resource.data.ownerId
-        && request.resource.data.restaurantId == resource.data.restaurantId
-        && request.resource.data.source == resource.data.source
+        && (resource.data.ownerId == request.auth.uid
+          || resource.data.restaurantId == request.auth.uid)
         && validMessPlan(request.resource.data);
 
       allow delete: if signedIn()
