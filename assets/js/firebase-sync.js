@@ -194,9 +194,24 @@
   async function syncPlan(plan, state) {
     if (!plan || state?.service !== "mess" || !state?.business) return;
     const context = await ready();
-    await context.db.collection("messPlans")
-      .doc(planDocumentId(context.user.uid, plan.id))
-      .set(planPayload(plan, context.user.uid, context.firebase), { merge: true });
+    const userId = context.user.uid;
+    const batch = context.db.batch();
+
+    // A customer listing needs both the mess profile and its plan. Publishing
+    // them in one commit prevents an orphaned plan when onboarding/profile sync
+    // was interrupted or still pending.
+    batch.set(
+      context.db.collection("restaurants").doc(userId),
+      businessPayload(state, userId, context.firebase),
+      { merge: true }
+    );
+    batch.set(
+      context.db.collection("messPlans").doc(planDocumentId(userId, plan.id)),
+      planPayload(plan, userId, context.firebase),
+      { merge: true }
+    );
+
+    await batch.commit();
   }
 
   function readPendingDeletes(userId = storedUserId()) {
