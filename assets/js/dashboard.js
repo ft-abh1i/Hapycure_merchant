@@ -454,7 +454,8 @@
       app.toast(index >= 0 ? "Mess plan updated on Hapycure" : "Mess plan published on Hapycure");
     } catch (error) {
       console.error("Firebase mess-plan sync failed:", error);
-      app.toast("Saved locally; customer sync pending");
+      const code = String(error?.code || "").replace("firestore/", "");
+      app.toast(code ? `Customer sync failed: ${code}` : "Customer sync failed. Please try again");
     }
   }
 
