@@ -39,11 +39,11 @@ service cloud.firestore {
         && data.phone.size() <= 20
         && data.photoURL is string
         && data.photoURL.size() <= 2048
-        && data.provider in ["google", "phone"]
+        && (data.provider == "google" || data.provider == "phone")
         && data.lastLoginAt is timestamp
-        && (!("dietProfile" in data) || data.dietProfile is map)
-        && (!("dietProfileCompleted" in data) || data.dietProfileCompleted is bool)
-        && (!("dietProfileUpdatedAt" in data) || data.dietProfileUpdatedAt is timestamp);
+        && (!data.keys().hasAny(["dietProfile"]) || data.dietProfile is map)
+        && (!data.keys().hasAny(["dietProfileCompleted"]) || data.dietProfileCompleted is bool)
+        && (!data.keys().hasAny(["dietProfileUpdatedAt"]) || data.dietProfileUpdatedAt is timestamp);
     }
 
     match /users/{userId} {
@@ -113,7 +113,7 @@ service cloud.firestore {
         && restaurantId == request.auth.uid
         && data.ownerId == request.auth.uid
         && data.source == "hapycure-merchant"
-        && data.service in ["food", "mess"]
+        && (data.service == "food" || data.service == "mess")
         && data.name is string
         && data.name.size() > 0
         && data.name.size() <= 100
@@ -181,11 +181,23 @@ service cloud.firestore {
         && data.name is string
         && data.name.size() > 0
         && data.name.size() <= 60
-        && data.category in [
-          "Breakfast", "Lunch", "Dinner", "Snack", "Snacks",
-          "Drink", "Drinks", "Beverages", "Dessert", "Desserts"
-        ]
-        && data.dietType in ["Veg", "Non-veg", "Non-Veg"]
+        && (
+          data.category == "Breakfast"
+          || data.category == "Lunch"
+          || data.category == "Dinner"
+          || data.category == "Snack"
+          || data.category == "Snacks"
+          || data.category == "Drink"
+          || data.category == "Drinks"
+          || data.category == "Beverages"
+          || data.category == "Dessert"
+          || data.category == "Desserts"
+        )
+        && (
+          data.dietType == "Veg"
+          || data.dietType == "Non-veg"
+          || data.dietType == "Non-Veg"
+        )
         && isNumber(data.price)
         && data.price >= 1
         && data.price <= 100000
@@ -236,9 +248,9 @@ service cloud.firestore {
     function validMealMenus(mealMenus) {
       return mealMenus is map
         && mealMenus.keys().hasOnly(["Breakfast", "Lunch", "Dinner"])
-        && (!("Breakfast" in mealMenus) || validDayMenu(mealMenus.Breakfast))
-        && (!("Lunch" in mealMenus) || validDayMenu(mealMenus.Lunch))
-        && (!("Dinner" in mealMenus) || validDayMenu(mealMenus.Dinner));
+        && (!mealMenus.keys().hasAny(["Breakfast"]) || validDayMenu(mealMenus.Breakfast))
+        && (!mealMenus.keys().hasAny(["Lunch"]) || validDayMenu(mealMenus.Lunch))
+        && (!mealMenus.keys().hasAny(["Dinner"]) || validDayMenu(mealMenus.Dinner));
     }
 
     function validMessPlan(data) {
@@ -256,18 +268,23 @@ service cloud.firestore {
         && data.name is string
         && data.name.size() > 0
         && data.name.size() <= 60
-        && data.cycle in ["Weekly", "Monthly"]
+        && (data.cycle == "Weekly" || data.cycle == "Monthly")
         && isNumber(data.price)
         && data.price >= 1
         && data.price <= 100000
-        && data.meals in [
-          "Lunch", "Dinner", "Lunch & Dinner", "Breakfast, Lunch & Dinner"
-        ]
-        && data.deliveryDays in [
-          "7 days a week", "6 days a week", "Weekdays only"
-        ]
+        && (
+          data.meals == "Lunch"
+          || data.meals == "Dinner"
+          || data.meals == "Lunch & Dinner"
+          || data.meals == "Breakfast, Lunch & Dinner"
+        )
+        && (
+          data.deliveryDays == "7 days a week"
+          || data.deliveryDays == "6 days a week"
+          || data.deliveryDays == "Weekdays only"
+        )
         && validDayMenu(data.menu)
-        && (!("mealMenus" in data) || validMealMenus(data.mealMenus))
+        && (!data.keys().hasAny(["mealMenus"]) || validMealMenus(data.mealMenus))
         && data.active is bool
         && data.updatedAt is timestamp;
     }
