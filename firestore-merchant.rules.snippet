@@ -175,7 +175,7 @@ service cloud.firestore {
     }
 
     match /restaurants/{restaurantId} {
-      allow read: if isMarketplaceDocument(resource.data)
+      allow read: if resource.data.approvalStatus == "approved"
         || (signedIn() && request.auth.uid == restaurantId);
 
       allow create: if signedIn()
@@ -244,7 +244,7 @@ service cloud.firestore {
     }
 
     match /dishes/{dishId} {
-      allow read: if isMarketplaceDocument(resource.data)
+      allow read: if resource.data.approvalStatus == "approved"
         || (signedIn() && resource.data.restaurantId == request.auth.uid);
 
       allow create: if signedIn()
@@ -327,7 +327,7 @@ service cloud.firestore {
     }
 
     match /messPlans/{planId} {
-      allow read: if isMarketplaceDocument(resource.data)
+      allow read: if resource.data.approvalStatus == "approved"
         || (signedIn() && resource.data.restaurantId == request.auth.uid);
 
       allow create: if signedIn()
