@@ -529,7 +529,7 @@
     app.toast("Publishing profile changes…");
     try {
       await window.HapycureFirebase.syncBusiness(state);
-      app.toast("Business profile updated on Hapycure");
+      app.toast("Profile changes submitted for admin approval");
     } catch (error) {
       console.error("Firebase business sync failed:", error);
       app.toast("Saved locally; customer sync pending");
