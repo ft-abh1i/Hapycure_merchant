@@ -19,6 +19,29 @@ service cloud.firestore {
       return data.source == "hapycure-merchant";
     }
 
+    function validApproval(data) {
+      return data.approvalStatus is string
+        && (data.approvalStatus == "pending"
+          || data.approvalStatus == "approved"
+          || data.approvalStatus == "rejected")
+        && data.submittedAt is timestamp
+        && (data.reviewedAt == null || data.reviewedAt is timestamp)
+        && data.reviewedBy is string
+        && data.reviewedBy.size() <= 100;
+    }
+
+    function validMerchantApprovalChange() {
+      return (
+          !resource.data.keys().hasAny(["approvalStatus"])
+          && request.resource.data.approvalStatus == "pending"
+        ) || request.resource.data.approvalStatus == resource.data.approvalStatus
+        || (
+          request.resource.data.approvalStatus == "pending"
+          && request.resource.data.reviewedAt == null
+          && request.resource.data.reviewedBy == ""
+        );
+    }
+
     function validUser(data) {
       return data.keys().hasOnly([
           "uid", "name", "email", "phone", "photoURL", "provider",
@@ -102,13 +125,15 @@ service cloud.firestore {
           "ownerId", "service", "name", "subtype", "foodType", "phone",
           "address", "latitude", "longitude", "accuracy", "openTime",
           "closeTime", "image", "bannerImage", "bannerPublicId", "open",
-          "published", "source", "updatedAt"
+          "published", "approvalStatus", "submittedAt", "reviewedAt",
+          "reviewedBy", "source", "updatedAt"
         ])
         && data.keys().hasAll([
           "ownerId", "service", "name", "subtype", "foodType", "phone",
           "address", "latitude", "longitude", "accuracy", "openTime",
           "closeTime", "image", "bannerImage", "bannerPublicId", "open",
-          "published", "source", "updatedAt"
+          "published", "approvalStatus", "submittedAt", "reviewedAt",
+          "reviewedBy", "source", "updatedAt"
         ])
         && restaurantId == request.auth.uid
         && data.ownerId == request.auth.uid
@@ -145,6 +170,7 @@ service cloud.firestore {
         && data.bannerPublicId.size() <= 500
         && data.open is bool
         && data.published is bool
+        && validApproval(data)
         && data.updatedAt is timestamp;
     }
 
@@ -153,13 +179,15 @@ service cloud.firestore {
         || (signedIn() && request.auth.uid == restaurantId);
 
       allow create: if signedIn()
-        && validRestaurant(request.resource.data, restaurantId);
+        && validRestaurant(request.resource.data, restaurantId)
+        && request.resource.data.approvalStatus == "pending";
 
       // The document ID is the partner UID. Validating the complete new
       // document lets older partner profiles migrate to the current schema.
       allow update: if signedIn()
         && request.auth.uid == restaurantId
-        && validRestaurant(request.resource.data, restaurantId);
+        && validRestaurant(request.resource.data, restaurantId)
+        && validMerchantApprovalChange();
 
       allow delete: if signedIn()
         && request.auth.uid == restaurantId
@@ -169,11 +197,13 @@ service cloud.firestore {
     function validDish(data) {
       return data.keys().hasOnly([
           "ownerId", "restaurantId", "name", "category", "dietType", "price",
-          "description", "image", "imagePublicId", "active", "source", "updatedAt"
+          "description", "image", "imagePublicId", "active", "approvalStatus",
+          "submittedAt", "reviewedAt", "reviewedBy", "source", "updatedAt"
         ])
         && data.keys().hasAll([
           "ownerId", "restaurantId", "name", "category", "dietType", "price",
-          "description", "image", "imagePublicId", "active", "source", "updatedAt"
+          "description", "image", "imagePublicId", "active", "approvalStatus",
+          "submittedAt", "reviewedAt", "reviewedBy", "source", "updatedAt"
         ])
         && data.ownerId == request.auth.uid
         && data.restaurantId == request.auth.uid
@@ -209,6 +239,7 @@ service cloud.firestore {
         && data.imagePublicId is string
         && data.imagePublicId.size() <= 500
         && data.active is bool
+        && validApproval(data)
         && data.updatedAt is timestamp;
     }
 
@@ -216,12 +247,15 @@ service cloud.firestore {
       allow read: if isMarketplaceDocument(resource.data)
         || (signedIn() && resource.data.restaurantId == request.auth.uid);
 
-      allow create: if signedIn() && validDish(request.resource.data);
+      allow create: if signedIn()
+        && validDish(request.resource.data)
+        && request.resource.data.approvalStatus == "pending";
 
       allow update: if signedIn()
         && (resource.data.ownerId == request.auth.uid
           || resource.data.restaurantId == request.auth.uid)
-        && validDish(request.resource.data);
+        && validDish(request.resource.data)
+        && validMerchantApprovalChange();
 
       allow delete: if signedIn()
         && resource.data.ownerId == request.auth.uid
@@ -256,11 +290,13 @@ service cloud.firestore {
     function validMessPlan(data) {
       return data.keys().hasOnly([
           "ownerId", "restaurantId", "name", "cycle", "price", "meals",
-          "deliveryDays", "menu", "mealMenus", "active", "source", "updatedAt"
+          "deliveryDays", "menu", "mealMenus", "active", "approvalStatus",
+          "submittedAt", "reviewedAt", "reviewedBy", "source", "updatedAt"
         ])
         && data.keys().hasAll([
           "ownerId", "restaurantId", "name", "cycle", "price", "meals",
-          "deliveryDays", "menu", "active", "source", "updatedAt"
+          "deliveryDays", "menu", "active", "approvalStatus", "submittedAt",
+          "reviewedAt", "reviewedBy", "source", "updatedAt"
         ])
         && data.ownerId == request.auth.uid
         && data.restaurantId == request.auth.uid
@@ -286,6 +322,7 @@ service cloud.firestore {
         && validDayMenu(data.menu)
         && (!data.keys().hasAny(["mealMenus"]) || validMealMenus(data.mealMenus))
         && data.active is bool
+        && validApproval(data)
         && data.updatedAt is timestamp;
     }
 
@@ -293,12 +330,15 @@ service cloud.firestore {
       allow read: if isMarketplaceDocument(resource.data)
         || (signedIn() && resource.data.restaurantId == request.auth.uid);
 
-      allow create: if signedIn() && validMessPlan(request.resource.data);
+      allow create: if signedIn()
+        && validMessPlan(request.resource.data)
+        && request.resource.data.approvalStatus == "pending";
 
       allow update: if signedIn()
         && (resource.data.ownerId == request.auth.uid
           || resource.data.restaurantId == request.auth.uid)
-        && validMessPlan(request.resource.data);
+        && validMessPlan(request.resource.data)
+        && validMerchantApprovalChange();
 
       allow delete: if signedIn()
         && resource.data.ownerId == request.auth.uid
