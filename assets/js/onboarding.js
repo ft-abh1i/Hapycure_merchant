@@ -67,7 +67,8 @@
         accuracy: Number(data.accuracy) || null,
         openTime: data.openTime,
         closeTime: data.closeTime,
-        open: true
+        open: true,
+        approvalStatus: "pending"
       },
       dishes: [],
       plans: []
@@ -79,7 +80,7 @@
 
     try {
       await window.HapycureFirebase.syncAllState(state);
-      app.toast("Partner profile published");
+      app.toast("Profile submitted for admin approval");
     } catch (error) {
       console.error("Firebase profile sync failed:", error);
       app.toast("Profile saved. Cloud sync will retry.");
