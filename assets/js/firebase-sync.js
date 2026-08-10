@@ -194,11 +194,9 @@
     if (!state?.business) return;
     const context = await ready();
     const reference = context.db.collection("restaurants").doc(context.user.uid);
-    const current = await reference.get();
     const payload = businessPayload(state, context.user.uid, context.firebase);
-    const needsApprovalStatus = !current.exists || !current.data()?.approvalStatus;
     await reference.set(
-      needsApprovalStatus ? { ...payload, ...approvalSubmission(context.firebase) } : payload,
+      { ...payload, ...approvalSubmission(context.firebase) },
       { merge: true }
     );
   }
