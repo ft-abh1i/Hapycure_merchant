@@ -9,6 +9,17 @@
   const targetMaxBytes = 50 * 1024;
   const maxDimension = 1200;
   const minDimension = 420;
+  const bannerOptimization = Object.freeze({
+    targetMinBytes: 160 * 1024,
+    targetMaxBytes: 350 * 1024,
+    maxDimension: 2000,
+    minDimension: 1000,
+    minQuality: .72,
+    maxQuality: .94,
+    fallbackQuality: .72,
+    resizeFactor: .9,
+    maxResizeAttempts: 6
+  });
 
   function validateImage(file) {
     if (!file) throw new Error("Choose an image first.");
@@ -70,8 +81,19 @@
     };
   }
 
-  async function compressToWebP(file) {
+  async function compressToWebP(file, options = {}) {
     validateImage(file);
+    const settings = {
+      targetMinBytes: options.targetMinBytes ?? targetMinBytes,
+      targetMaxBytes: options.targetMaxBytes ?? targetMaxBytes,
+      maxDimension: options.maxDimension ?? maxDimension,
+      minDimension: options.minDimension ?? minDimension,
+      minQuality: options.minQuality ?? .42,
+      maxQuality: options.maxQuality ?? .92,
+      fallbackQuality: options.fallbackQuality ?? .38,
+      resizeFactor: options.resizeFactor ?? .82,
+      maxResizeAttempts: options.maxResizeAttempts ?? 8
+    };
     const decoded = await decodeImage(file);
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d", { alpha: true });
@@ -80,21 +102,21 @@
       throw new Error("Image optimization is not supported by this browser.");
     }
 
-    let dimensions = fitDimensions(decoded.width, decoded.height, maxDimension);
+    let dimensions = fitDimensions(decoded.width, decoded.height, settings.maxDimension);
     let bestBlob = null;
     let bestWidth = dimensions.width;
     let bestHeight = dimensions.height;
     let bestQuality = .88;
 
     try {
-      for (let resizeAttempt = 0; resizeAttempt < 8; resizeAttempt += 1) {
+      for (let resizeAttempt = 0; resizeAttempt < settings.maxResizeAttempts; resizeAttempt += 1) {
         canvas.width = dimensions.width;
         canvas.height = dimensions.height;
         context.clearRect(0, 0, canvas.width, canvas.height);
         context.drawImage(decoded.source, 0, 0, canvas.width, canvas.height);
 
-        let lowQuality = .42;
-        let highQuality = .92;
+        let lowQuality = settings.minQuality;
+        let highQuality = settings.maxQuality;
         let attemptBlob = null;
         let attemptQuality = lowQuality;
 
@@ -102,7 +124,7 @@
           const quality = (lowQuality + highQuality) / 2;
           const blob = await canvasToBlob(canvas, quality);
 
-          if (blob.size <= targetMaxBytes) {
+          if (blob.size <= settings.targetMaxBytes) {
             attemptBlob = blob;
             attemptQuality = quality;
             lowQuality = quality;
@@ -120,18 +142,18 @@
         }
 
         const longestSide = Math.max(dimensions.width, dimensions.height);
-        if (longestSide <= minDimension) break;
+        if (longestSide <= settings.minDimension) break;
         dimensions = {
-          width: Math.max(1, Math.round(dimensions.width * .82)),
-          height: Math.max(1, Math.round(dimensions.height * .82))
+          width: Math.max(1, Math.round(dimensions.width * settings.resizeFactor)),
+          height: Math.max(1, Math.round(dimensions.height * settings.resizeFactor))
         };
       }
 
       if (!bestBlob) {
-        bestBlob = await canvasToBlob(canvas, .38);
+        bestBlob = await canvasToBlob(canvas, settings.fallbackQuality);
         bestWidth = canvas.width;
         bestHeight = canvas.height;
-        bestQuality = .38;
+        bestQuality = settings.fallbackQuality;
       }
     } finally {
       decoded.release();
@@ -145,14 +167,14 @@
       width: bestWidth,
       height: bestHeight,
       quality: bestQuality,
-      withinTargetRange: bestBlob.size >= targetMinBytes && bestBlob.size <= targetMaxBytes
+      withinTargetRange: bestBlob.size >= settings.targetMinBytes && bestBlob.size <= settings.targetMaxBytes
     };
   }
 
-  async function uploadImage(file, onProgress = () => {}, onStage = () => {}) {
+  async function uploadImage(file, onProgress = () => {}, onStage = () => {}, options = {}) {
     validateImage(file);
     onStage({ stage: "optimizing" });
-    const optimized = await compressToWebP(file);
+    const optimized = await compressToWebP(file, options);
     onStage({
       stage: "uploading",
       originalBytes: optimized.originalBytes,
@@ -214,6 +236,10 @@
     };
   }
 
+  function uploadBanner(file, onProgress = () => {}, onStage = () => {}) {
+    return uploadImage(file, onProgress, onStage, bannerOptimization);
+  }
+
   window.HapycureCloudinary = Object.freeze({
     cloudName,
     uploadPreset,
@@ -221,8 +247,10 @@
     allowedTypes,
     targetMinBytes,
     targetMaxBytes,
+    bannerOptimization,
     validateImage,
     compressToWebP,
-    uploadImage
+    uploadImage,
+    uploadBanner
   });
 })();
