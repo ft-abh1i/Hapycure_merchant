@@ -98,6 +98,11 @@
     return `${userId}_${String(planId).replaceAll("/", "_")}`;
   }
 
+  function approvalStatus(value) {
+    const normalized = String(value || "").trim().toLowerCase();
+    return normalized === "approved" || normalized === "rejected" ? normalized : "pending";
+  }
+
   function businessPayload(state, userId, firebaseSdk) {
     const business = state.business || {};
     return {
@@ -118,6 +123,10 @@
       bannerPublicId: String(business.bannerPublicId || business.imagePublicId || ""),
       open: business.open !== false,
       published: true,
+      approvalStatus: approvalStatus(business.approvalStatus),
+      submittedAt: business.submittedAt || timestamp(firebaseSdk),
+      reviewedAt: business.reviewedAt || null,
+      reviewedBy: String(business.reviewedBy || ""),
       source: "hapycure-merchant",
       updatedAt: timestamp(firebaseSdk)
     };
@@ -135,6 +144,10 @@
       image: String(dish.image || ""),
       imagePublicId: String(dish.imagePublicId || ""),
       active: dish.active !== false,
+      approvalStatus: approvalStatus(dish.approvalStatus),
+      submittedAt: dish.submittedAt || timestamp(firebaseSdk),
+      reviewedAt: dish.reviewedAt || null,
+      reviewedBy: String(dish.reviewedBy || ""),
       source: "hapycure-merchant",
       updatedAt: timestamp(firebaseSdk)
     };
@@ -169,6 +182,10 @@
       menu,
       mealMenus,
       active: plan?.active !== false,
+      approvalStatus: approvalStatus(plan?.approvalStatus),
+      submittedAt: plan?.submittedAt || timestamp(firebaseSdk),
+      reviewedAt: plan?.reviewedAt || null,
+      reviewedBy: String(plan?.reviewedBy || ""),
       source: "hapycure-merchant",
       updatedAt: timestamp(firebaseSdk)
     };
@@ -296,7 +313,11 @@
       imagePublicId: String(data.bannerPublicId || ""),
       bannerImage: String(data.bannerImage || data.image || ""),
       bannerPublicId: String(data.bannerPublicId || ""),
-      open: data.open !== false
+      open: data.open !== false,
+      approvalStatus: approvalStatus(data.approvalStatus),
+      submittedAt: data.submittedAt || null,
+      reviewedAt: data.reviewedAt || null,
+      reviewedBy: String(data.reviewedBy || "")
     };
   }
 
