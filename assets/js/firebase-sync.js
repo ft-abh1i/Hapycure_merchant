@@ -103,6 +103,15 @@
     return normalized === "approved" || normalized === "rejected" ? normalized : "pending";
   }
 
+  function approvalSubmission(firebaseSdk) {
+    return {
+      approvalStatus: "pending",
+      submittedAt: timestamp(firebaseSdk),
+      reviewedAt: null,
+      reviewedBy: ""
+    };
+  }
+
   function businessPayload(state, userId, firebaseSdk) {
     const business = state.business || {};
     return {
@@ -123,17 +132,13 @@
       bannerPublicId: String(business.bannerPublicId || business.imagePublicId || ""),
       open: business.open !== false,
       published: true,
-      approvalStatus: approvalStatus(business.approvalStatus),
-      submittedAt: business.submittedAt || timestamp(firebaseSdk),
-      reviewedAt: business.reviewedAt || null,
-      reviewedBy: String(business.reviewedBy || ""),
       source: "hapycure-merchant",
       updatedAt: timestamp(firebaseSdk)
     };
   }
 
-  function dishPayload(dish, state, userId, firebaseSdk) {
-    return {
+  function dishPayload(dish, state, userId, firebaseSdk, submitForApproval = false) {
+    const payload = {
       ownerId: userId,
       restaurantId: userId,
       name: String(dish.name || "").trim(),
@@ -144,16 +149,13 @@
       image: String(dish.image || ""),
       imagePublicId: String(dish.imagePublicId || ""),
       active: dish.active !== false,
-      approvalStatus: approvalStatus(dish.approvalStatus),
-      submittedAt: dish.submittedAt || timestamp(firebaseSdk),
-      reviewedAt: dish.reviewedAt || null,
-      reviewedBy: String(dish.reviewedBy || ""),
       source: "hapycure-merchant",
       updatedAt: timestamp(firebaseSdk)
     };
+    return submitForApproval ? { ...payload, ...approvalSubmission(firebaseSdk) } : payload;
   }
 
-  function planPayload(plan, userId, firebaseSdk) {
+  function planPayload(plan, userId, firebaseSdk, submitForApproval = false) {
     const menu = plan?.menu && typeof plan.menu === "object" && !Array.isArray(plan.menu)
       ? Object.fromEntries(Object.entries(plan.menu).map(([day, item]) => [
         String(day || "").trim(),
@@ -171,7 +173,7 @@
           : {}
       ]).filter(([meal]) => meal))
       : {};
-    return {
+    const payload = {
       ownerId: userId,
       restaurantId: userId,
       name: String(plan?.name || "").trim(),
@@ -182,20 +184,21 @@
       menu,
       mealMenus,
       active: plan?.active !== false,
-      approvalStatus: approvalStatus(plan?.approvalStatus),
-      submittedAt: plan?.submittedAt || timestamp(firebaseSdk),
-      reviewedAt: plan?.reviewedAt || null,
-      reviewedBy: String(plan?.reviewedBy || ""),
       source: "hapycure-merchant",
       updatedAt: timestamp(firebaseSdk)
     };
+    return submitForApproval ? { ...payload, ...approvalSubmission(firebaseSdk) } : payload;
   }
 
   async function syncBusiness(state) {
     if (!state?.business) return;
     const context = await ready();
-    await context.db.collection("restaurants").doc(context.user.uid).set(
-      businessPayload(state, context.user.uid, context.firebase),
+    const reference = context.db.collection("restaurants").doc(context.user.uid);
+    const current = await reference.get();
+    const payload = businessPayload(state, context.user.uid, context.firebase);
+    const needsApprovalStatus = !current.exists || !current.data()?.approvalStatus;
+    await reference.set(
+      needsApprovalStatus ? { ...payload, ...approvalSubmission(context.firebase) } : payload,
       { merge: true }
     );
   }
@@ -205,7 +208,7 @@
     const context = await ready();
     await context.db.collection("dishes")
       .doc(dishDocumentId(context.user.uid, dish.id))
-      .set(dishPayload(dish, state, context.user.uid, context.firebase), { merge: true });
+      .set(dishPayload(dish, state, context.user.uid, context.firebase, true), { merge: true });
   }
 
   async function syncPlan(plan, state) {
@@ -214,8 +217,14 @@
     const userId = context.user.uid;
     const restaurantRef = context.db.collection("restaurants").doc(userId);
     const planRef = context.db.collection("messPlans").doc(planDocumentId(userId, plan.id));
-    const restaurantData = businessPayload(state, userId, context.firebase);
-    const planData = planPayload(plan, userId, context.firebase);
+    const restaurantDocument = await restaurantRef.get();
+    const baseRestaurantData = businessPayload(state, userId, context.firebase);
+    const restaurantNeedsApprovalStatus = !restaurantDocument.exists
+      || !restaurantDocument.data()?.approvalStatus;
+    const restaurantData = restaurantNeedsApprovalStatus
+      ? { ...baseRestaurantData, ...approvalSubmission(context.firebase) }
+      : baseRestaurantData;
+    const planData = planPayload(plan, userId, context.firebase, true);
     const batch = context.db.batch();
 
     // A customer listing needs both the mess profile and its plan. Publishing
@@ -363,35 +372,52 @@
     const context = await ready();
     const userId = context.user.uid;
 
+    const localDishes = state.service === "food" ? (state.dishes || []) : [];
+    const localPlans = state.service === "mess" ? (state.plans || []) : [];
+    const [businessDocument, remoteSnapshot, remotePlanSnapshot] = await Promise.all([
+      context.db.collection("restaurants").doc(userId).get(),
+      context.db.collection("dishes").where("restaurantId", "==", userId).get(),
+      context.db.collection("messPlans").where("restaurantId", "==", userId).get()
+    ]);
+    const baseBusinessData = businessPayload(state, userId, context.firebase);
+    const businessNeedsApprovalStatus = !businessDocument.exists
+      || !businessDocument.data()?.approvalStatus;
     await context.db.collection("restaurants").doc(userId).set(
-      businessPayload(state, userId, context.firebase),
+      businessNeedsApprovalStatus
+        ? { ...baseBusinessData, ...approvalSubmission(context.firebase) }
+        : baseBusinessData,
       { merge: true }
     );
 
-    const localDishes = state.service === "food" ? (state.dishes || []) : [];
+    const remoteDishes = new Map(remoteSnapshot.docs.map(document => [document.id, document.data() || {}]));
     await Promise.all(localDishes.map(dish =>
       context.db.collection("dishes")
         .doc(dishDocumentId(userId, dish.id))
-        .set(dishPayload(dish, state, userId, context.firebase), { merge: true })
+        .set(dishPayload(
+          dish,
+          state,
+          userId,
+          context.firebase,
+          !remoteDishes.get(dishDocumentId(userId, dish.id))?.approvalStatus
+        ), { merge: true })
     ));
 
-    const remoteSnapshot = await context.db.collection("dishes")
-      .where("restaurantId", "==", userId)
-      .get();
     const localIds = new Set(localDishes.map(dish => dishDocumentId(userId, dish.id)));
     const staleDocuments = remoteSnapshot.docs.filter(document => !localIds.has(document.id));
     await deleteDocuments(context, staleDocuments);
 
-    const localPlans = state.service === "mess" ? (state.plans || []) : [];
+    const remotePlans = new Map(remotePlanSnapshot.docs.map(document => [document.id, document.data() || {}]));
     await Promise.all(localPlans.map(plan =>
       context.db.collection("messPlans")
         .doc(planDocumentId(userId, plan.id))
-        .set(planPayload(plan, userId, context.firebase), { merge: true })
+        .set(planPayload(
+          plan,
+          userId,
+          context.firebase,
+          !remotePlans.get(planDocumentId(userId, plan.id))?.approvalStatus
+        ), { merge: true })
     ));
 
-    const remotePlanSnapshot = await context.db.collection("messPlans")
-      .where("restaurantId", "==", userId)
-      .get();
     const localPlanIds = new Set(localPlans.map(plan => planDocumentId(userId, plan.id)));
     const stalePlanDocuments = remotePlanSnapshot.docs.filter(document => !localPlanIds.has(document.id));
     await deleteDocuments(context, stalePlanDocuments);
