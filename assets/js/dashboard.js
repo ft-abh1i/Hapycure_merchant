@@ -47,8 +47,11 @@
     $("#businessMeta").textContent = isMess
       ? `${business.foodType} • ${business.address}`
       : `${business.foodType} • ${business.address} • ${app.formatTime(business.openTime)}–${app.formatTime(business.closeTime)}`;
-    $("#businessStatus").textContent = business.open ? "Accepting orders" : "Temporarily closed";
-    $("#businessStatus").classList.toggle("closed", !business.open);
+    const businessApproval = String(business.approvalStatus || "pending").toLowerCase();
+    $("#businessStatus").textContent = businessApproval === "approved"
+      ? (business.open ? "Admin approved" : "Approved · closed")
+      : businessApproval === "rejected" ? "Admin rejected" : "Admin approval pending";
+    $("#businessStatus").classList.toggle("closed", !business.open || businessApproval !== "approved");
     $("#totalCount").textContent = items.length;
     $("#activeCount").textContent = items.filter(item => item.active).length;
     $("#startingPrice").textContent = prices.length ? app.formatPrice(Math.min(...prices)) : "₹0";
@@ -123,6 +126,7 @@
   function dishCard(item) {
     const dietType = item.dietType || "Not specified";
     const dietClass = dietType === "Non-veg" ? "non-veg" : dietType === "Veg" ? "" : "unspecified";
+    const approval = String(item.approvalStatus || "pending").toLowerCase();
     return `
       <article class="item-card dish-card">
         <div class="item-image">${item.image
@@ -136,6 +140,7 @@
           <div class="dish-tags">
             <span class="tag">${app.escapeHTML(item.category)}</span>
             <span class="diet-badge ${dietClass}">${app.escapeHTML(dietType)}</span>
+            <span class="tag">Admin: ${app.escapeHTML(approval)}</span>
           </div>
           <p>${app.escapeHTML(item.description || "Freshly prepared by your kitchen.")}</p>
           ${itemActions(item)}
@@ -144,6 +149,7 @@
   }
 
   function planCard(item) {
+    const approval = String(item.approvalStatus || "pending").toLowerCase();
     const preview = days.slice(0, 3).map(day =>
       `<b>${day.slice(0, 3)}:</b> ${app.escapeHTML(item.menu?.[day] || "Menu not added")}`
     ).join("<br>");
@@ -157,6 +163,7 @@
           <div class="plan-meta">
             <span class="tag">${app.escapeHTML(item.meals)}</span>
             <span class="tag">${app.escapeHTML(item.deliveryDays)}</span>
+            <span class="tag">Admin: ${app.escapeHTML(approval)}</span>
           </div>
           <div class="menu-preview">${preview}<br><b>+ 4 more days</b></div>
           ${itemActions(item)}
@@ -393,16 +400,19 @@
     const item = Object.fromEntries(new FormData(form).entries());
     item.id = item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     item.active = form.elements.active.checked;
+    item.approvalStatus = "pending";
+    item.reviewedAt = null;
+    item.reviewedBy = "";
     const index = state.dishes.findIndex(dish => dish.id === item.id);
     if (index >= 0) state.dishes[index] = item;
     else state.dishes.unshift(item);
     app.saveState(state);
     app.closeModal("dishModal");
     renderDashboard();
-    app.toast("Publishing dish to Hapycure…");
+    app.toast("Submitting dish for admin approval…");
     try {
       await window.HapycureFirebase.syncDish(item, state);
-      app.toast(index >= 0 ? "Dish updated on Hapycure" : "Dish published on Hapycure");
+      app.toast(index >= 0 ? "Dish update sent for approval" : "Dish sent for admin approval");
     } catch (error) {
       console.error("Firebase dish sync failed:", error);
       app.toast("Saved locally; customer sync pending");
@@ -440,7 +450,10 @@
         meals.length === 1
           ? mealMenus[meals[0]][day]
           : meals.map(meal => `${meal}: ${mealMenus[meal][day]}`).join(" • ")
-      ]))
+      ])),
+      approvalStatus: "pending",
+      reviewedAt: null,
+      reviewedBy: ""
     };
     const index = state.plans.findIndex(plan => plan.id === item.id);
     if (index >= 0) state.plans[index] = item;
@@ -448,10 +461,10 @@
     app.saveState(state);
     app.closeModal("planModal");
     renderDashboard();
-    app.toast("Publishing mess plan to Hapycure…");
+    app.toast("Submitting mess plan for admin approval…");
     try {
       await window.HapycureFirebase.syncPlan(item, state);
-      app.toast(index >= 0 ? "Mess plan updated on Hapycure" : "Mess plan published on Hapycure");
+      app.toast(index >= 0 ? "Plan update sent for approval" : "Plan sent for admin approval");
     } catch (error) {
       console.error("Firebase mess-plan sync failed:", error);
       const code = String(error?.code || "").replace("firestore/", "");
