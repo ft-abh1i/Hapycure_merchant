@@ -585,7 +585,7 @@
     setMessBannerStatus("Uploading banner…");
 
     try {
-      const uploaded = await window.HapycureCloudinary.uploadImage(
+      const uploaded = await window.HapycureCloudinary.uploadBanner(
         file,
         progress => {
           $("#messBannerProgressBar").style.width = `${progress}%`;
