@@ -112,6 +112,24 @@
     };
   }
 
+  function comparableValue(value) {
+    if (Array.isArray(value)) return value.map(comparableValue);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.keys(value).sort().map(key => [key, comparableValue(value[key])])
+      );
+    }
+    return value ?? null;
+  }
+
+  function contentChanged(remoteData, nextData, fields) {
+    if (!remoteData) return true;
+    return fields.some(field =>
+      JSON.stringify(comparableValue(remoteData[field])) !==
+      JSON.stringify(comparableValue(nextData[field]))
+    );
+  }
+
   function businessPayload(state, userId, firebaseSdk) {
     const business = state.business || {};
     return {
@@ -204,9 +222,19 @@
   async function syncDish(dish, state) {
     if (!dish || state?.service !== "food" || !state?.business) return;
     const context = await ready();
-    await context.db.collection("dishes")
-      .doc(dishDocumentId(context.user.uid, dish.id))
-      .set(dishPayload(dish, state, context.user.uid, context.firebase, true), { merge: true });
+    const reference = context.db.collection("dishes")
+      .doc(dishDocumentId(context.user.uid, dish.id));
+    const document = await reference.get();
+    const basePayload = dishPayload(dish, state, context.user.uid, context.firebase, false);
+    const needsApproval = !document.exists || contentChanged(
+      document.data() || {},
+      basePayload,
+      ["name", "category", "dietType", "price", "description", "image", "imagePublicId"]
+    );
+    const payload = needsApproval
+      ? { ...basePayload, ...approvalSubmission(context.firebase) }
+      : basePayload;
+    await reference.set(payload, { merge: true });
   }
 
   async function syncPlan(plan, state) {
@@ -215,14 +243,25 @@
     const userId = context.user.uid;
     const restaurantRef = context.db.collection("restaurants").doc(userId);
     const planRef = context.db.collection("messPlans").doc(planDocumentId(userId, plan.id));
-    const restaurantDocument = await restaurantRef.get();
+    const [restaurantDocument, planDocument] = await Promise.all([
+      restaurantRef.get(),
+      planRef.get()
+    ]);
     const baseRestaurantData = businessPayload(state, userId, context.firebase);
     const restaurantNeedsApprovalStatus = !restaurantDocument.exists
       || !restaurantDocument.data()?.approvalStatus;
     const restaurantData = restaurantNeedsApprovalStatus
       ? { ...baseRestaurantData, ...approvalSubmission(context.firebase) }
       : baseRestaurantData;
-    const planData = planPayload(plan, userId, context.firebase, true);
+    const basePlanData = planPayload(plan, userId, context.firebase, false);
+    const planNeedsApproval = !planDocument.exists || contentChanged(
+      planDocument.data() || {},
+      basePlanData,
+      ["name", "cycle", "price", "meals", "deliveryDays", "menu", "mealMenus"]
+    );
+    const planData = planNeedsApproval
+      ? { ...basePlanData, ...approvalSubmission(context.firebase) }
+      : basePlanData;
     const batch = context.db.batch();
 
     // A customer listing needs both the mess profile and its plan. Publishing
