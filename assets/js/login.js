@@ -35,9 +35,12 @@
   }
 
   function partnerDestination(userId) {
-    return cachedPartnerState(userId).onboarded
-      ? "./dashboard/?v=2026-08-09-google-auth-v4"
-      : "./onboarding/?v=2026-08-09-google-auth-v4";
+    const state = cachedPartnerState(userId);
+    if (!state.onboarded) return "./onboarding/?v=2026-08-19-approval-gate-v1";
+    const status = String(state.business?.approvalStatus || "pending").toLowerCase();
+    return status === "approved"
+      ? "./dashboard/?v=2026-08-19-approval-gate-v1"
+      : "./approval/?v=2026-08-19-approval-gate-v1";
   }
 
   function enterPartnerApp(userId) {
