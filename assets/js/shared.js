@@ -218,4 +218,16 @@
     resetLocationPicker,
     detectLocation
   };
+
+  // Dashboard is available only after the business profile has been approved.
+  // This client-side gate complements Firestore approval rules and prevents a
+  // pending/rejected partner from bypassing the waiting screen with a direct URL.
+  const currentPage = location.pathname.split("/").filter(Boolean).pop();
+  if (currentPage === "dashboard") {
+    const state = loadState();
+    const status = String(state.business?.approvalStatus || "pending").toLowerCase();
+    if (state.onboarded && state.business && status !== "approved") {
+      location.replace("../approval/");
+    }
+  }
 })();
