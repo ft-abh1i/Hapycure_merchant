@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#E35336">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Application Review · Hapycure Partner</title>
+  <style>
+    :root{--brand:#E35336;--brand-soft:#fff1ed;--ink:#1c1c1f;--muted:#72747c;--line:#ececef;--green:#18864b;--green-soft:#eaf8f0;--red:#c5362b;--red-soft:#fff0ef;--amber:#b66a08;--amber-soft:#fff7e8}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:#f7f7f8}button{font:inherit}
+    body{min-height:100vh;min-height:100dvh;background:radial-gradient(circle at 50% -5%,#ffe5dd 0,transparent 38%),#f7f7f8}
+    .page{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+    header{display:flex;align-items:center;justify-content:space-between;width:min(100% - 32px,760px);margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 0 12px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:800}.brand img{width:38px;height:38px;object-fit:contain}.partner{font-size:10px;letter-spacing:.12em;color:var(--brand);display:block;margin-top:1px}
+    .secure{display:flex;align-items:center;gap:6px;color:#777;font-size:12px;font-weight:650}.secure svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+    main{flex:1;display:grid;place-items:center;width:100%;padding:20px 16px 44px}
+    .card{width:min(100%,560px);background:#fff;border:1px solid rgba(0,0,0,.055);border-radius:28px;padding:34px 30px;box-shadow:0 24px 80px rgba(22,22,27,.08);text-align:center}
+    .status-icon{width:78px;height:78px;border-radius:50%;display:grid;place-items:center;margin:0 auto 20px;background:var(--amber-soft);color:var(--amber);position:relative}.status-icon svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.status-icon.pending:after{content:"";position:absolute;inset:-6px;border:2px solid rgba(182,106,8,.16);border-radius:50%;animation:pulse 1.8s ease-out infinite}.status-icon.approved{background:var(--green-soft);color:var(--green)}.status-icon.rejected{background:var(--red-soft);color:var(--red)}.status-icon.error{background:#f2f2f4;color:#6d6f76}
+    @keyframes pulse{0%{transform:scale(.84);opacity:1}100%{transform:scale(1.18);opacity:0}}
+    .eyebrow{color:var(--brand);font-size:11px;font-weight:850;letter-spacing:.13em}.card h1{font-size:30px;line-height:1.15;margin:8px 0 10px;letter-spacing:-.035em}.lead{margin:0 auto;color:var(--muted);max-width:430px;line-height:1.55;font-size:14px}.business{display:inline-flex;align-items:center;gap:7px;margin-top:16px;padding:7px 11px;border-radius:999px;background:#f5f5f6;font-size:12px;font-weight:750}.business:before{content:"";width:7px;height:7px;background:var(--brand);border-radius:50%}
+    .steps{margin:28px 0 0;text-align:left;border:1px solid var(--line);border-radius:18px;padding:7px 17px}.step{position:relative;display:grid;grid-template-columns:34px 1fr;gap:10px;padding:15px 0}.step:not(:last-child){border-bottom:1px solid var(--line)}.dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;margin-top:1px;background:#f1f1f3;color:#92949a;font-size:12px;font-weight:850}.step.done .dot{background:var(--green-soft);color:var(--green)}.step.current .dot{background:var(--amber-soft);color:var(--amber)}.step.locked .dot{background:#f4f4f5;color:#aaa}.step strong{display:block;font-size:13px;margin-bottom:2px}.step p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+    .live{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;color:var(--muted);font-size:12px}.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 0 4px rgba(24,134,75,.1)}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}.btn{border:0;border-radius:13px;padding:13px 14px;font-weight:780;cursor:pointer}.primary{background:var(--brand);color:#fff;box-shadow:0 10px 25px rgba(227,83,54,.22)}.secondary{background:#f3f3f4;color:#38383d}.btn:disabled{opacity:.55;cursor:not-allowed}.support{margin:18px 0 0;color:#92949a;font-size:11px;line-height:1.5}.support a{color:var(--brand);font-weight:750;text-decoration:none}
+    @media(max-width:520px){header{width:min(100% - 28px,760px)}main{padding:10px 14px 28px}.card{padding:28px 18px 22px;border-radius:24px}.card h1{font-size:26px}.actions{grid-template-columns:1fr}.status-icon{width:70px;height:70px}.steps{padding-left:14px;padding-right:14px}}
+    @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="brand"><img src="../assets/images/hapycure-logo.png" alt="Hapycure"><div>Hapycure<span class="partner">PARTNER</span></div></div>
+      <div class="secure"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5z"/></svg>Secure review</div>
+    </header>
+
+    <main>
+      <section class="card" aria-live="polite">
+        <div class="status-icon pending" id="statusIcon">
+          <svg id="statusSvg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div class="eyebrow" id="eyebrow">APPLICATION SUBMITTED</div>
+        <h1 id="statusTitle">Verification in progress</h1>
+        <p class="lead" id="statusMessage">Thanks for joining Hapycure. Our team is reviewing your partner profile. Your dashboard will unlock automatically after approval.</p>
+        <span class="business" id="businessName">Partner business</span>
+
+        <div class="steps">
+          <div class="step done"><span class="dot">✓</span><div><strong>Business details submitted</strong><p>Your onboarding information has been received.</p></div></div>
+          <div class="step current" id="reviewStep"><span class="dot" id="reviewDot">2</span><div><strong id="reviewTitle">Hapycure verification</strong><p id="reviewText">Our team is checking your business profile.</p></div></div>
+          <div class="step locked" id="dashboardStep"><span class="dot" id="dashboardDot">3</span><div><strong>Partner dashboard</strong><p id="dashboardText">Unlocks after your application is approved.</p></div></div>
+        </div>
+
+        <div class="live" id="liveStatus"><span class="live-dot"></span><span>Approval status updates automatically</span></div>
+        <div class="actions">
+          <button class="btn primary" id="checkStatus" type="button">Check status</button>
+          <button class="btn secondary" id="logoutPartner" type="button">Log out</button>
+        </div>
+        <p class="support">Need help? Contact <a href="mailto:hepicurefood@gmail.com">Hapycure Support</a></p>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="../assets/js/shared.js?v=2026-08-07-account-state-v2"></script>
+  <script src="../assets/js/firebase-sync.js?v=2026-08-19-availability-v10"></script>
+  <script src="../assets/js/approval.js?v=2026-08-19-approval-gate-v1"></script>
+</body>
+</html>
