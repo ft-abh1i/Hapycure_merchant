@@ -11,8 +11,10 @@
     return;
   }
 
-  if (app.loadState().onboarded) {
-    location.replace("../dashboard/");
+  const existingState = app.loadState();
+  if (existingState.onboarded) {
+    const status = String(existingState.business?.approvalStatus || "pending").toLowerCase();
+    location.replace(status === "approved" ? "../dashboard/" : "../approval/");
     return;
   }
 
@@ -76,17 +78,17 @@
 
     app.saveState(state);
     submitButton.disabled = true;
-    submitButton.textContent = "Publishing profile…";
+    submitButton.textContent = "Submitting for review…";
 
     try {
       await window.HapycureFirebase.syncAllState(state);
       app.toast("Profile submitted for admin approval");
     } catch (error) {
       console.error("Firebase profile sync failed:", error);
-      app.toast("Profile saved. Cloud sync will retry.");
+      app.toast("Profile saved. Approval page will retry sync.");
     }
 
-    setTimeout(() => location.replace("../dashboard/"), 350);
+    setTimeout(() => location.replace("../approval/"), 350);
   }
 
   $$(".service-card").forEach(card =>
